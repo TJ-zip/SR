@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supreme HTML Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        /* ... (your existing CSS rules) ... */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars on body */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #f0f2f5;
+            color: #333;
+            font-size: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quiz-container, .landing-container, .results-container {
+            background-color: #ffffff;
+            overflow: hidden;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .landing-container, .results-container {
+            padding: 30px;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .results-container {
+            justify-content: flex-start; /* Align results content to top */
+        }
+
+
+        .landing-container h1, .results-container h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2em;
+            font-weight: 600;
+            margin-top: 0;
+        }
+
+        .landing-container input[type="text"] {
+            padding: 10px 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 80%;
+            max-width: 300px;
+            font-size: 1em;
+        }
+
+        .start-button, .nav-button, .review-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease;
+            margin: 5px;
+            font-weight: 500;
+        }
+
+        .start-button:hover, .nav-button:hover, .review-button:hover {
+            background-color: #0056b3;
+        }
+
+        .quiz-header {
+            background-color: #343a40;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            height: 48px; /* Fixed height */
+            box-sizing: border-box;
+        }
+
+        .quiz-header h1 {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .user-info {
+            font-size: 0.95em;
+        }
+
+        .quiz-body {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            height: calc(100vh - 48px); /* Full height minus header */
+        }
+
+        .question-nav {
+            width: 200px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            flex-shrink: 0;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .question-nav h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .question-nav-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+            gap: 8px;
+        }
+
+        .question-nav-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 35px;
+            height: 35px;
+            border: 1px solid #adb5bd;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: normal;
+            background-color: #ffffff;
+            color: #495057;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            position: relative;
+            font-size: 0.9em;
+        }
+
+        .question-nav-item:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Status Colors */
+        .question-nav-item.status-default { background-color: #ffffff; color: #495057; border-color: #adb5bd;} /* White */
+        .question-nav-item.status-answered { background-color: #28a745; color: white; border-color: #218838; } /* Green */
+        .question-nav-item.status-unanswered { background-color: #dc3545; color: white; border-color: #c82333; } /* Red */
+        .question-nav-item.status-review { background-color: #6f42c1; color: white; border-color: #5a32a3; } /* Purple */
+        .question-nav-item.status-answered-review { background-color: #6f42c1; color: white; border-color: #5a32a3; } /* Purple + Green Dot */
+
+        /* Green dot for answered and reviewed */
+        .question-nav-item.status-answered-review::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 7px;
+            height: 7px;
+            background-color: #28a745; /* Green dot */
+            border-radius: 50%;
+            border: 1px solid white;
+        }
+
+
+        .main-content {
+            flex-grow: 1;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            /* justify-content: space-between; REMOVED - Let content flow naturally */
+            overflow-y: auto; /* Allow scrolling for the whole main area */
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .timers {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 1em;
+            font-weight: 500;
+            color: #495057;
+            flex-shrink: 0;
+        }
+
+        .timer {
+            background-color: #e9ecef;
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+        }
+        .timer.red {
+            color: #dc3545;
+            border-color: #dc3545;
+            font-weight: 600;
+        }
+
+        .question-area-wrapper { /* Wrapper for question and options */
+             /* Allow this area to take up available space before buttons */
+             flex-grow: 1;
+             margin-bottom: 20px; /* Space before buttons */
+             /* Removed overflow-y: auto; let main-content handle scrolling */
+        }
+
+        .question-text {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            color: #212529;
+            font-weight: 500;
+        }
+
+        /* --- NEW: Image Container Styling --- */
+        #question-image-container {
+             margin-bottom: 20px; /* Space between image and options */
+             text-align: center; /* Center the image */
+        }
+        #question-image-container img {
+             max-width: 100%; /* Make image responsive */
+             height: auto;    /* Maintain aspect ratio */
+             max-height: 300px; /* Optional: Limit max height */
+             border-radius: 4px; /* Optional: Rounded corners */
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: Slight shadow */
+        }
+         /* --- END NEW --- */
+
+        .options {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .options li {
+            margin-bottom: 10px;
+        }
+
+        .options label {
+            display: block;
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            padding: 12px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            font-size: 1em;
+            font-weight: normal;
+        }
+
+        .options input[type="radio"] {
+            margin-right: 10px;
+            display: none;
+        }
+
+         .options label:hover {
+             background-color: #e2e6ea;
+             border-color: #adb5bd;
+         }
+
+        .options input[type="radio"]:checked + label {
+            background-color: #cfe2ff;
+            border-color: #007bff;
+            font-weight: 500;
+            color: #0056b3;
+        }
+
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
+            /* margin-top: auto; REMOVED - Let it sit naturally at the bottom */
+            flex-shrink: 0; /* Prevent buttons area from shrinking */
+        }
+
+        .nav-button.prev { background-color: #ffc107; color: #212529;}
+        .nav-button.prev:hover { background-color: #e0a800; }
+        .review-button { background-color: #6f42c1; }
+        .review-button:hover { background-color: #5a32a3; }
+        .nav-button.next { background-color: #28a745; }
+        .nav-button.next:hover { background-color: #218838; }
+        .nav-button:disabled {
+            background-color: #adb5bd;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .nav-button.submit { background-color: #dc3545; }
+        .nav-button.submit:hover { background-color: #c82333; }
+
+
+        /* Results Page Specifics */
+        .results-content {
+             width: 100%;
+             max-width: 900px;
+             margin: 0 auto;
+             padding: 20px 0;
+        }
+
+        .score-card {
+            background-color: #e6f7ff;
+            border: 1px solid #007bff;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+        .score-card h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #0056b3;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+        .score-card p {
+            font-size: 1.2em;
+            font-weight: 500;
+            color: #343a40;
+            margin: 5px 0;
+        }
+
+        .results-section {
+            margin-bottom: 25px;
+            text-align: left;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+
+        .results-section h3 {
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .result-item {
+            border-bottom: 1px dashed #ced4da;
+            padding: 12px 0;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-item p {
+            margin: 4px 0;
+            font-size: 1em;
+            line-height: 1.4;
+        }
+        .result-item .question { font-weight: 600; color: #343a40; }
+        .result-item .your-answer { color: #dc3545; font-weight: 500;}
+        .result-item .correct-answer { color: #28a745; font-weight: 500;}
+        .result-item .explanation { font-style: normal; color: #6c757d; margin-top: 8px; font-size: 0.95em;}
+
+        .time-analysis {
+             padding: 15px;
+             background-color: #f8f9fa;
+             border: 1px solid #dee2e6;
+             border-radius: 5px;
+             margin-bottom: 20px;
+        }
+        .time-analysis h3 {
+             color: #495057;
+             border-bottom: 1px solid #dee2e6;
+             padding-bottom: 8px;
+             margin-bottom: 15px;
+             text-align: left;
+             font-size: 1.2em;
+             font-weight: 600;
+        }
+        #timeChart {
+            max-height: 350px;
+            width: 100% !important;
+        }
+
+        /* Hide elements */
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="landing-container">
+        <h1>Welcome to the Quiz!</h1>
+        <input type="text" id="name-input" placeholder="Enter your name">
+        <br>
+        <button id="start-quiz-button" class="start-button">Start Quiz</button>
+    </div>
+
+    <!-- Quiz Page -->
+    <div id="quiz-page" class="quiz-container hidden">
+        <div class="quiz-header">
+            <h1>Quiz</h1>
+            <div class="user-info">
+                <span>Name: <span id="user-name"></span></span> |
+                <span>Total Time Left: <span id="total-timer">90:00</span></span>
+            </div>
+        </div>
+        <div class="quiz-body">
+            <div class="question-nav">
+                <h3>Question Palette</h3>
+                <ul id="question-nav-list" class="question-nav-list">
+                    <!-- Question numbers will be dynamically added here -->
+                </ul>
+            </div>
+            <div class="main-content">
+                <!-- Top content wrapper -->
+                <div class="timers">
+                    <span id="current-question-number">Question X of Y</span>
+                    <span class="timer" id="question-timer">Time: 0s</span>
+                </div>
+                <!-- Scrollable question area -->
+                <div class="question-area-wrapper">
+                    <p id="question-text" class="question-text">Question text goes here...</p>
+                    <!-- === NEW: Image container === -->
+                    <div id="question-image-container"></div>
+                    <!-- === END NEW === -->
+                    <ul id="options-list" class="options">
+                        <!-- Options will be dynamically added here -->
+                    </ul>
+                </div>
+                 <!-- Navigation buttons at the bottom -->
+                <div class="navigation-buttons">
+                    <button id="prev-button" class="nav-button prev">Previous</button>
+                    <button id="review-button" class="review-button">Mark for Review</button>
+                    <button id="next-button" class="nav-button next">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Page -->
+    <div id="results-page" class="results-container hidden">
+       <div class="results-content">
+            <h1>Quiz Results</h1>
+            <div id="score-card" class="score-card">
+                <h2>Score</h2>
+                <p><span id="score">0</span> / <span id="total-marks">0</span></p>
+                 <p>Well done, <span id="result-user-name">User</span>!</p>
+            </div>
+
+            <div id="wrong-unanswered-list" class="results-section">
+                <h3>Review Incorrect & Unanswered Questions</h3>
+                <!-- Incorrect/Unanswered questions will be added here -->
+            </div>
+
+            <div class="time-analysis">
+                 <h3>Time Analysis Per Question</h3>
+                <canvas id="timeChart"></canvas>
+            </div>
+             <button onclick="window.location.reload();" class="start-button">Restart Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            { // 1
+                question: "Find out the correct meaning of 'ZAP' from the following:",
+                options: ["to destroy or kill something", "strange", "unpleasant", "unhappy cry"],
+                answer: "to destroy or kill something",
+                explanation: "The word \"zap\" is commonly used to mean destroying, eliminating, or killing something, often in a quick or forceful manner."
+            },
+            { // 2
+                question: "Identify the correct sentence.",
+                options: ["He gave me an advice", "He gave me a lot of advices.", "He gave me many advices.", "He gave me a lot of advice."],
+                answer: "He gave me a lot of advice.",
+                explanation: "Advice is an uncountable noun, meaning it does not have a plural form."
+            },
+            { // 3
+                question: "Given below are two statements.\nStatement (I): Homonyms are two or more words which look or sound the same, but have distinct and unrelated meanings.\nStatement (Il): Homophones are two or more words which sound the same but which are written differently.\nIn light of the above statement, choose the most appropriate answer from the options given below.",
+                options: ["Statement (I) is correct", "Statement (I) is correct.", "Both statement (I) and statement (Il) are correct.", "Both statement (I) and statement (Il) are incorrect."],
+                answer: "Both statement (I) and statement (Il) are correct.",
+                explanation: "Both statements accurately describe the concepts of homonyms and homophones. Therefore, C. Both statement (I) and statement (Il) are correct is the right answer:"
+            },
+            { // 4
+                question: "Select the incorrect example of present continuous tense from the following.",
+                options: ["Please be quiet. I'm working.", "Tom isn't working today.", "They don't work very hard.", "What time are you going out?"],
+                answer: "They don't work very hard.",
+                explanation: "The present continuous tense is used to describe actions that are happening at the moment of speaking or around the current time. It is formed using am/is/are + verb-ing.\nSo, They don't work very hard is incorrect: This is in the simple present tense, not the present continuous tense. The correct present continuous form would be: \"They aren't working very hard.\""
+            },
+            { // 5
+                question: "Read the statements carefully and choose correct options:\nStatement I: A little is a positive idea.\nStatement Il: Little is a negative idea.",
+                options: ["Both statement (I) and statement (Il) are incorrect.", "Both statement (I) and statement (II) are correct.", "Statement (L) is correct but statement (Il) is incorrect.", "Statement (I) is incorrect but statement (Il) is correct."],
+                answer: "Both statement (I) and statement (II) are correct.",
+                explanation: "Both statements are correct. A little conveys a positive idea, while little conveys a negative idea."
+            },
+            { // 6
+                question: "Match List I with List II\nList 1\n(Example.)\n(A). We did a lot of work yesterday.\n(B). He was reading a book.\n(C). Does he play the guitar?\n(D). Tom is having a shower at the moment\nList Il\n(Type of Tense.)\n(I). Present Simple\n(II). Past Simple\n(III). Present continuous\n(IV). Past continuous\nChoose the correct answer form the options given below:",
+                options: ["(A) - (I), (B) - (II), (C) - (III), (D) - (IV)", "(A) - (II), (B) - (IV), (C) - (I), (D) - (III)", "(A) - (I), (B) - (II), (C) - (IV), (D) - (III)", "(A) - (II), (B) - (IV), (C) - (I), (D) - (III)"],
+                answer: "(A) - (II), (B) - (IV), (C) - (I), (D) - (III)",
+                explanation: "A (We did...) is Past Simple (II).\nB (He was reading...) is Past Continuous (IV).\nC (Does he play...) is Present Simple (I).\nD (Tom is having...) is Present Continuous (III)."
+            },
+            { // 7
+                question: "Find out the incorrect option for countable noun from the following.",
+                options: ["bottles", "men", "cars", "money"],
+                answer: "money",
+                explanation: "Countable nouns are nouns that can be counted and have both singular and plural forms. Examples include:\nA. bottles (singular: bottle, plural: bottles)\nB. men (singular: man, plural: men)\nC. cars (singular: car, plural: cars)\nD. money is an uncountable noun. It refers to a concept or substance that cannot be counted individually. We cannot say \"one money\" or \"two moneys.\" Instead, we use terms like \"some money\" or \"a lot of money.\"\nThus, money is the incorrect option for a countable noun."
+            },
+            { // 8
+                question: "Select the term which does not match the group.",
+                options: ["After", "Now", "Today", "This year"],
+                answer: "After",
+                explanation: "• B. Now, C. Today, and D. This year all refer to specific points or periods in time:\n• A. After is a preposition that indicates a relative time (e.g., \"after the meeting\") and does not refer to a specific point or period in time like the others.\nThus, After does not match the group."
+            },
+            { // 9
+                question: "Identify the correct phrasal verb in the sentence:\nShe was intelligent and got through the staff exam without difficulty.",
+                options: ["She was", "Without difficulty", "Got through", "The staff exam"],
+                answer: "Got through",
+                explanation: "A phrasal verb is a combination of a verb and a preposition or adverb that creates a meaning different from the original verb.\nThus, the correct phrasal verb is C. Got through."
+            },
+            { // 10
+                question: "Find the word which is the antonym of the given word:\nGrief",
+                options: ["excitement", "joy", "sad", "tight"],
+                answer: "joy",
+                explanation: "• Grief means deep sorrow or sadness, especially caused by someone's death or a loss.\n• The opposite of grief is joy, which means a feeling of great happiness or pleasure."
+            },
+            { // 11
+                question: "Find the correct combination of irregular verbs\n(A) Begin - began\n(B) Leave - left\n(C) Write - wrote\n(D) catch - caught\nChoose the correct answer from the options given below:",
+                options: ["(A), (B) and (D) only.", "(A), (B) and (C) only.", "(A), (B), (C) and (D).", "(B), (C) and (D) only."],
+                answer: "(A), (B), (C) and (D).",
+                explanation: "An irregular verb is a verb that does not follow the standard rules of conjugation in English. Unlike regular verbs, which form their past tense and past participle by adding -ed or -d to the base form (e.g., \"walk\" → \"walked\"), irregular verbs have unique forms for their past tense and past participle. These forms must be memorized because they do not follow a predictable pattern.\nSo, all the combinations (A, B, C, and D) are correct examples of irregular verbs. There is no incorrect option in this list."
+            },
+            { // 12
+                question: "Fill the blank with correct preposition in the given sentence.\nDo you like travelling ____ train?",
+                options: ["on", "with", "at", "by"],
+                answer: "by",
+                explanation: "The phrase \"travelling by train\" is the correct usage. The preposition \"by\" is used to indicate the means of transportation (e.g., by car, by bus, by plane, by train).\nThe other options are incorrect:\n• A. on: Used for surfaces or modes like \"on foot\" or \"on a bus\" (when referring to being inside the vehicle).\n• B. with: Used to indicate accompaniment or tools, not means of transportation.\n• C. at: Used to indicate location or time, not means of transportation."
+            },
+            { // 13
+                question: "Choose the correct meaning of the given word.\ncemetery",
+                options: ["Hundredth anniversary", "A place for funerals", "A cement house", "Chemical factory"],
+                answer: "A place for funerals",
+                explanation: "A cemetery is a place where dead people are buried. It is also known as a graveyard or burial ground."
+            },
+            { // 14
+                question: "Find out the positive adjective form the following.\n(A). Kind\n(B). bright\n(C). timid\n(D). cheerful\nChoose the correct answer from the options given below:",
+                options: ["(A), (B) and (D) only.", "(A), (B) and (C) only.", "(A). (B), (C) and (D).", "(B), (C) and (D) only."],
+                answer: "(A), (B) and (D) only.",
+                explanation: "Positive adjectives describe something in a favorable or optimistic way. Let's analyze each option:\n1. (A) Kind: Positive: Describes someone who is friendly, generous, or considerate.\n2. (B) Bright: Positive: Describes something that is full of light, intelligent, or cheerful.\n3. (C) Timid: Negative: Describes someone who is shy or lacks confidence, which is not a positive trait.\n4. (D) Cheerful: Positive: Describes someone who is happy and optimistic."
+            },
+            { // 15
+                question: "What is common belief regarding science?",
+                options: ["Responsible for development", "Overall development of mankind", "Science is responsible for the frequent, highly destructive twentieth century wars.", "Vital correlation between science and peace"],
+                answer: "Science is responsible for the frequent, highly destructive twentieth century wars.",
+                explanation: "The passage states that there is a common belief that science is responsible for the frequent and highly destructive wars of the twentieth century. This belief arises because the twentieth century saw both significant scientific advancements and devastating global wars."
+            },
+            { // 16
+                question: "Name the two towns which were the victims of the second world war.",
+                options: ["Nagoya and Hiroshima", "Nagasaki and Hiroshima", "Toyokawa and Nagasaki", "Yokohama and fukuoka"],
+                answer: "Nagasaki and Hiroshima",
+                explanation: "The passage mentions that Americans dropped atom bombs on Hiroshima and Nagasaki during the Second World War, completely destroying these two towns."
+            },
+            { // 17
+                question: "Give the antonym for the word: End",
+                options: ["Finish", "close", "limit", "commencement"],
+                answer: "commencement",
+                explanation: "The word \"end\" means the conclusion or termination of something. Its antonym is \"commencement,\" which means the beginning or start of something. The other options-finish, close, and limit-are either synonyms or unrelated to the meaning of \"end.\""
+            },
+            { // 18
+                question: "I shall purchase the clothes if they are cheap.\nIdentify the type of adverb clause in the sentence.",
+                options: ["concession", "cause", "manner", "condition"],
+                answer: "condition",
+                explanation: "The sentence \"I shall purchase the clothes if they are cheap\" contains the adverb clause \"if they are cheap.\"\nThis clause expresses a condition under which the action in the main clause (*I shall purchase the clothes*) will occur:"
+            },
+            { // 19
+                question: "The habit of eating to much is:",
+                options: ["gluttony", "greed", "grimly", "gloomy"],
+                answer: "gluttony",
+                explanation: "Gluttony refers to the habit of eating or drinking excessively. It is often associated with overindulgence in food.\nThe other options are incorrect:\n• B. Greed: Refers to an intense desire for wealth or possessions.\n• C. Grimly: Means in a serious or gloomy manner.\n• D. Gloomy: Refers to a feeling of sadness or depression."
+            },
+            { // 20
+                question: "Select the correct option of past perfect tense.\n(A). Had Sarika not come here?\n(B). She had not sung a song.\n(C). Raju had drawn a picture.\n(D). Kedar had not been going to school.\nChoose the correct answer from the options given below:",
+                options: ["(A), (B) and (D) only.", "(A), (B) and (C) only.", "(A), (B) and (C) only (D).", "(B), (C) and (D) only."],
+                answer: "(A), (B) and (C) only.",
+                explanation: "The past perfect tense is formed using had + past participle and is used to describe an action that was completed before another action or point in the past.\nLet's analyze each option:\n(A) Had Sarika not come here? Correct: This is a question in the past perfect tense, using had + past participle (come).\n(B) She had not sung a song. Correct: This is a negative sentence in the past perfect tense, using had + past participle (sung).\n(C) Raju had drawn a picture. Correct: This is an affirmative sentence in the past perfect tense, using had + past participle (drawn).\n(D) Kedar had not been going to school. Incorrect: This is in the past perfect continuous tense, not the past perfect tense. It uses had + been + present participle (going)."
+            },
+            { // 21
+                question: "Select the correct option of complex sentence formed by the given simple sentence.\nI have brought a book. It contains a lot of information.",
+                options: ["Though I have brought a book, it contains a lot information.", "I have brought a book containing a lot of information.", "I have brought a book and it contains a lot of information.", "I have brought a book that contains a lot of information."],
+                answer: "I have brought a book that contains a lot of information.",
+                explanation: "A complex sentence consists of one independent clause and one or more dependent clauses. In this case:\n• Independent clause: \"I have brought a book.\"\n• Dependent clause: \"that contains a lot of information.\"\nThe dependent clause \"that contains a lot of information\" is introduced by the relative pronoun \"that\", making the sentence complex."
+            },
+            { // 22
+                question: "Identify the type of sentence and choose the correct option:\nIf you do not hurry, we shall miss the show.",
+                options: ["Exclamatory", "Compound", "Complex", "Simple"],
+                answer: "Complex",
+                explanation: "A complex sentence consists of one independent clause and one or more dependent clauses. In this sentence:\n• Dependent clause: \"If you do not hurry\" (introduced by the subordinating conjunction \"if\").\n• Independent clause: \"we shall miss the show.\"\nThe other options are incorrect because:\n• A. Exclamatory: This type of sentence expresses strong emotion and ends with an exclamation mark (e.g., \"What a beautiful day!\").\n• B. Compound: This type of sentence consists of two or more independent clauses joined by a coordinating conjunction (e.g., \"T wanted to go, but it was raining.*\"). Coordinating Conjunctions can be remembered as FANBOYS where F=For, A=And, N=Nor, B=But, 0=0r, Y=Yet, S=So. (Note: \"for\" is not used as a coordinating conjunction in modern English)\n• D. Simple: This type of sentence consists of a single independent clause (e.g., \"We shall miss the show.\"). You can identify simple sentence by the use of one finite verb."
+            },
+            { // 23
+                question: "Identify the underlined subordinate clause:\nThe bridge, which was damaged, will be repaired soon",
+                options: ["Noun clause", "Adverb clause", "Adjective clause", "Prepositional clause"],
+                answer: "Adjective clause",
+                explanation: "The underlined clause is \"which was damaged.\"\n• This clause modifies the noun \"bridge\" by providing additional information about it.\n• Subordinate clauses that modify nouns are called adjective clauses (also known as relative clauses). They often begin with relative pronouns like which, that, who, etc."
+            },
+            { // 24
+                question: "Find the correct adjective form the given sentence.\nThe ship sustained heavy damage and the captain died a glorious death.\n(A) Damage\n(B) Glorious\n(C) Heavy\n(D) Death\nChoose the correct answer from the options given below:",
+                options: ["(A), (B) and (D) only.", "(B) and (C) only.", "(A), (B) (C)and (D) only.", "(B), (C) and (D) only."],
+                answer: "(B) and (C) only.",
+                explanation: "Adjectives are words that describe or modify nouns. In the sentence, 'heavy' describes 'damage' and 'glorious' describes 'death'. Therefore, (B) Glorious and (C) Heavy are the adjectives."
+            },
+            { // 25
+                question: "Given below are two statements:\nStatement (1): A preposition is a linking word. it joins two words phrases or sentences.\nStatement (Il): An Interjection is a word that expresses sudden feeling.\nIn light of the above statements, choose the most appropriate answer from the options given below.",
+                options: ["Both Statement (1) and Statement (I) are correct.", "Both Statement (1) and Statement (Il) are incorrect.", "Statement (I) is correct but Statement (Il) is incorrect.", "Statement (I) is incorrect but Statement (Il) is correct."],
+                answer: "Statement (I) is incorrect but Statement (Il) is correct.",
+                explanation: "Statement (L): A preposition is a linking word. It joins two words, phrases, or sentences. This statement is incorrect. A preposition is not a linking word; it is a word that shows the relationship between a noun (or pronoun) and another word in the sentence (e.g. \"The book is on the table\"). Linking words are conjunctions (e.g., \"and,\" \"but,\" \"because\").\nStatement (Il): An interjection is a word that expresses sudden feeling. This statement is correct. An interjection is a word or phrase that expresses sudden emotion or feeling (e.g., \"Wow!\", \"Oh no!\", \"Hurray!\")."
+            },
+            { // 26
+                question: "Choose the correct sentence from the following:",
+                options: ["Though Sarvadnya does not like that school, he has been studying there for the last 10 years.", "Though Sarvadnya does not like that school, he have been studying there for the last 10 years.", "ThoughSarvadnya does not like that school, he is studying there for the last 10 years.", "Though Sarvadnya does not like that school, he was studying there for the last 10 years."],
+                answer: "Though Sarvadnya does not like that school, he has been studying there for the last 10 years.",
+                explanation: "The sentence uses the present perfect continuous tense (\"has been studying\") to describe an action that started in the past and continues to the present. This tense is appropriate because the action (studying) has been ongoing for the last 10 years and is still happening. Option A uses the correct subject-verb agreement ('he has')."
+            },
+            { // 27
+                question: "Find the correct example of question tag\n(A). You can do anything, can you?\n(B). I am here, am I?\n(C). We found him, didn't we?\n(D). I am here, aren't I?\nChoose the correct answer from the options given below:",
+                options: ["(A), (B) and (D) only.", "(A), (B) and (C) only.", "(C) and (D) only", "(B), (C) and (D) only."],
+                answer: "(C) and (D) only",
+                explanation: "A question tag is a short question added at the end of a statement to confirm or seek agreement. It follows specific rules based on the verb and subject of the main clause.\n1. (A) You can do anything, can you? Incorrect: The question tag should be \"can't you?\" (negative tag for a positive statement).\n2. (B) I am here, am I? Incorrect: The question tag should be \"aren't I?\" (the correct tag for \"I am\").\n3. (C) We found him, didn't we? Correct: The statement is positive (\"We found him\"), so the negative tag \"didn't we?\" is used.\n4. (D) I am here, aren't I? Correct: Although \"I am\" is positive, the standard tag for \"Tam\" is \"aren't I?\" (an exception in English)."
+            },
+            { // 28
+                question: "Punctuate the sentence:\nhow amazing it is i said",
+                options: ["\"How amazing it is?\" I said", "\"How amazing it is !\" I said.", "\"How amazing it is,\" I said.", "\"How amazing ! it is,\" I said."],
+                answer: "\"How amazing it is !\" I said.",
+                explanation: "The sentence is exclamatory, so it should end with an exclamation mark (!). The dialogue should be enclosed in quotation marks.\nThe pronoun \"I\" should be capitalized, and the reporting clause (\"I said\") should end with a period (.).\nThe other options are incorrect because:\nA. \"How amazing it is?\" I said Incorrect: The sentence is an exclamation, not a question, so it should end with an exclamation mark, not a question mark.\nC. \"How amazing it is, \" I said. Incorrect: The exclamation mark is missing inside the quotes, and the comma after the quotation mark is unnecessary.\nD. \"How amazing! it is, \" I said. Incorrect: The exclamation mark is placed incorrectly within the quoted speech."
+            },
+            { // 29
+                question: "Change the degree of the given sentence:\nTemperature is one of the most important physical factors.\n(A) Temperature is as important as physical factors.\n(B) Very few other physical factors are as important as temperature\n(C) No other physical factor is important than temperature\n(D) none of the above\nchoose the correct answer from the options given below:",
+                options: ["(A) and (B)", "(B) Only", "(C) And (D)", "(D) Only"],
+                answer: "(B) Only",
+                explanation: "The original sentence is in the superlative degree ('one of the most important'). To change it to the positive degree using 'as...as', we use 'Very few...' because the original compares one item to a group it belongs to. Option (B) 'Very few other physical factors are as important as temperature' correctly changes it to the positive degree. Option (A) is incorrect as it implies temperature is as important as all physical factors combined. Option (C) is an incorrect comparative form."
+            },
+            { // 30
+                question: "Find out the correct antonyms for: accept",
+                options: ["admit", "agree", "adopt", "decline"],
+                answer: "decline",
+                explanation: "Accept means to agree to receive or take something. Its opposite is decline, which means to refuse or reject something. Admit, agree, and adopt are closer to synonyms or related concepts."
+            },
+            { // 31
+                question: "Fill in the blanks with correct verb from in the given sentence:\nSubash Chandra Bose ____ president of the Indian National congress in 1938.",
+                options: ["is elect", "Had electing", "Was elected", "Was elect"],
+                answer: "Was elected",
+                explanation: "The sentence describes a past event (1938) and the subject (Subash Chandra Bose) received the action (being elected). This requires the past passive voice, which is formed with 'was/were + past participle'. The past participle of 'elect' is 'elected'. Thus, 'Was elected' is correct."
+            },
+            { // 32
+                question: "Given below are Three statements:\nStatement (I): Mother is reading a newspaper:\nStatement (Il): A decision was taken by her.\nStatement (III): He has taken the book.\nIn light of the above Active and Passive voice statements, choose the most appropriate answer from the options given below.",
+                options: ["Statement (I) and (Ill) are in passive voice and Statement (Il) is in active voice", "Statement (D. (I) and (III) are in passive voice.", "Statement (I. (I) and (III) are in active voice", "Statement (I) and (Ill) are in active voice and Statement (Il) is in passive voice."],
+                answer: "Statement (I) and (Ill) are in active voice and Statement (Il) is in passive voice.",
+                explanation: "• Statement (I): \"Mother is reading a newspaper.\" This is in active voice because the subject (Mother) is performing the action (reading).\n• Statement (II): \"A decision was taken by her.\" This is in passive voice because the subject (A decision) is receiving the action, and the doer (her) is mentioned after \"by.\"\n• Statement (III): \"He has taken the book.\" This is in active voice because the subject (He) is performing the action (has taken)."
+            },
+            { // 33
+                question: "Find out the correct Imperative sentence from the given options:",
+                options: ["Teacher ordered Mohan to leave the class at once.", "It is your duty to help me in my old age.", "She said, \"How ugly I look in this dress!\"", "None of you will help me."],
+                answer: "Teacher ordered Mohan to leave the class at once.",
+                explanation: "Imperative sentences give commands, orders, requests, or advice. Option A reports an order ('Teacher ordered Mohan to leave...'). While it's reported speech, the original speech ('Leave the class at once.') was imperative. Options B, C, and D are declarative or exclamatory, not imperative."
+            },
+            { // 34
+                question: "Select correct indirect speech form of the given direct speech:\nThe teacher said to Ashok, \"Go away.\"",
+                options: ["The teacher said to Ashok that he could go away.", "The teacher ordered Ashok to go away.", "The teacher asked Ashok if he could go away.", "The teacher requested Ashok to go away."],
+                answer: "The teacher ordered Ashok to go away.",
+                explanation: "The direct speech \"Go away\" is a command. When converting an imperative sentence (command) to indirect speech, the reporting verb 'said to' is changed to 'ordered', 'commanded', 'told', etc., and the imperative verb is changed to an infinitive ('to' + verb). Therefore, 'ordered Ashok to go away' is the correct form."
+            },
+            { // 35
+                question: "Choose the correct pairs of Active voice and Passive voice verbs:",
+                options: ["am eating - is eaten", "speak - is speaking", "was telling - was being told", "had sung- was being sing"],
+                answer: "was telling - was being told",
+                explanation: "Let's analyze the pairs:\nA. am eating (Present Continuous Active) - is being eaten (Present Continuous Passive). 'is eaten' is Present Simple Passive. Incorrect.\nB. speak (Present Simple Active) - is spoken (Present Simple Passive). 'is speaking' is Present Continuous Active. Incorrect.\nC. was telling (Past Continuous Active) - was being told (Past Continuous Passive). Correct.\nD. had sung (Past Perfect Active) - had been sung (Past Perfect Passive). 'was being sing' is incorrect grammar. Incorrect."
+            },
+            { // 36
+                question: "Choose the suitable title for the above passage.",
+                options: ["Geographical Survey of Hudson River:", "Pollution in Hudson River:", "Emergency landing in the streets of New York", "Emergency landing in Hudson River."],
+                answer: "Emergency landing in Hudson River.",
+                explanation: "The passage clearly describes the pilot's decision and action to land the plane in the Hudson River due to damaged engines after hitting birds. Option D accurately reflects this main event."
+            },
+            { // 37
+                question: "The pilot of the jetliner saved many lives. It shows he was",
+                options: ["Weak minded", "Courageous", "Disturbed", "Timid"],
+                answer: "Courageous",
+                explanation: "The pilot made a difficult decision under pressure ('deliberate emergency landing') and successfully landed the plane in the river, saving everyone ('all passengers and crew were saved'). This demonstrates great presence of mind and bravery, hence 'Courageous' is the best description.\n• A. Weak minded: Incorrect, the pilot showed strong decision-making.\n• B. Courageous: Correct, the pilot showed bravery and skill.\n• C. Disturbed: Incorrect, no indication of this.\n• D. Timid: Incorrect, the pilot acted decisively."
+            },
+            { // 38
+                question: "Why were the passengers called lucky?",
+                options: ["As they escaped only with severe shock.", "As they escaped only with minor injuries.", "As they escaped only with shock and minor injuries.", "As they escaped only with damaged engines."],
+                answer: "As they escaped only with shock and minor injuries.",
+                explanation: "The last sentence of the passage explicitly states: 'They were lucky to escape with only shock and minor Injuries.'"
+            },
+            { // 39
+                question: "Choose the correct correlative conjunction in the given sentence:\n____ you like it ____ not, you have to wear a helmet.",
+                options: ["Whether _or", "Either _ or", "Not only _ but also", "Both _ and"],
+                answer: "Whether _or",
+                explanation: "\"Whether...or not\" is a standard correlative conjunction pair used to present alternatives, often when one alternative is the negation of the other, indicating that the outcome remains the same regardless of the choice or feeling. 'Whether you like it or not' fits perfectly."
+            },
+            { // 40
+                question: "Choose the correct Wh-question word to give the underlined part of the given sentence:\nSachin's car is red in colour:",
+                options: ["Who's", "Whose", "who", "whom"],
+                answer: "Whose",
+                explanation: "The underlined part 'Sachin's' indicates possession. The Wh-word used to ask about possession is 'Whose'. The question would be 'Whose car is red in colour?' 'Who's' means 'who is' or 'who has'. 'Who' refers to the subject, and 'Whom' refers to the object."
+            },
+            { // 41
+                question: "ABC Ltd provided the following data of quarterly sales of 4 products W, X, Y and Z. Find out which product had the highest average sales over the four quarters?\nProduct | Q1 | Q2 | Q3 | Q4\n------- | -- | -- | -- | --\nW       | 75 | 90 | 83 | 105\nX       | 60 | 68 | 75 | 83\nY       | 105| 98 | 90 | 83\nZ       | 83 | 75 | 68 | 60",
+                options: ["Product W", "Product X", "Product Y", "Product Z"],
+                answer: "Product Y",
+                explanation: "Calculate the Total Sales for Each Product:\nW: 75 + 90 + 83 + 105 = 353\nX: 60 + 68 + 75 + 83 = 286\nY: 105 + 98 + 90 + 83 = 376\nZ: 83 + 75 + 68 + 60 = 286\nCalculate the Average Sales for Each Product:\nDivide the total sales by 4 (since there are 4 quarters):\nW: 353 ÷ 4 = 88.25\nX: 286 ÷ 4 = 71.5\nY: 376 ÷ 4 = 94\nZ: 286 ÷ 4 = 71.5\nThe highest average sales are for Product Y, with an average of 94."
+            },
+            { // 42
+                question: "In a row of students, the position of Rony from the right side of the row is 15th and his position from the left side of the row is 26th. How many total number of students are standing in the row?",
+                options: ["11", "40", "41", "26"],
+                answer: "40",
+                explanation: "If Rony's position from the right side is 15th and his position from the left side is 26th, we can find the total number of students by adding the positions from both ends and subtracting 1 (because Rony is counted twice).\nTotal number of students = (Position from left) + (Position from right) - 1\nTotal = 26 + 15 - 1 = 41 - 1 = 40\nTherefore, the total number of students standing in the row is 40."
+            },
+            { // 43
+                question: "In a certain code language, 'QUARTER' is written as 'RETRAUQ'. How is 'ANIMAL' written in that code?",
+                options: ["MINALA", "LAMIAN", "AMILAN", "LAMINA"],
+                answer: "LAMINA",
+                explanation: "The coding logic is simply reversing the order of the letters in the word.\nQUARTER reversed is RETRAUQ.\nApplying the same logic to ANIMAL:\nANIMAL reversed is LAMINA."
+            },
+            { // 44
+                question: "Look at this series: 23, 22, 24, 23, 25, 24, .. What number should come next?",
+                options: ["22", "23", "25", "26"],
+                answer: "26",
+                explanation: "The pattern alternates between subtracting 1 and adding 2:\n23 - 1 = 22\n22 + 2 = 24\n24 - 1 = 23\n23 + 2 = 25\n25 - 1 = 24\nThe next step is to add 2:\n24 + 2 = 26\nTherefore, the next number in the series is 26."
+            },
+            { // 45
+                question: "In a certain code language 'CAMEL' is written as 'OVNZX' and 'TIGER' is written as 'IVTRG'. How is 'ANIMAL' written in that code language?",
+                options: ["OZNRMZ", "ZNRMOZ", "ZMRNOZ", "NRMZOZ"],
+                answer: "OZNRMZ",
+                explanation: "The logic involves finding the opposite letter for each letter in the original word (A=Z, B=Y, C=X, ...) and then reversing the resulting sequence.\nCAMEL -> XZNVO -> OVNZX (Reversed)\nTIGER -> GRTV I -> IVTRG (Reversed)\nANIMAL -> ZMRNZO -> OZNRMZ (Reversed)"
+            },
+            { // 46
+                question: "What will be the mirror image of the given figure, if mirror is placed at right side of the figure?",
+                options: ["Option A Image", "Option B Image", "Option C Image", "Option D Image"],
+                answer: "Option C Image",
+                explanation: "The correct option is C. The mirror image flips the figure horizontally.",
+                image: "figure_for_q46.png" // Placeholder image name
+            },
+            { // 47
+                question: "A family consists of six members Anita, Baban, Chandu, Prema, Ronak and Samir. Baban is the son of Chandu, but Chandu is husband of Anita. Ronak is the brother of Chandu. Prema is the daughter of Anita. Samir is the brother of Anita. How many children does Anita have?",
+                options: ["One", "Two", "Three", "Four"],
+                answer: "Two",
+                explanation: "Let's map the relationships:\n- Chandu is husband of Anita (Married Couple: Chandu <=> Anita)\n- Baban is the son of Chandu (Child of Chandu & Anita)\n- Prema is the daughter of Anita (Child of Chandu & Anita)\n- Ronak is the brother of Chandu (Chandu's Sibling)\n- Samir is the brother of Anita (Anita's Sibling)\nAnita's children are Baban (son) and Prema (daughter). Therefore, Anita has two children."
+            },
+            { // 48
+                question: "What means of Transport did A use?",
+                options: ["Bus", "Train", "Bike", "Cycle"],
+                answer: "Cycle",
+                explanation: "Let's deduce from the passage:\n- C: Karnataka by Truck\n- B: Maharashtra by Train\n- D: Travelled by Bike\n- E: Travelled by Bus\nThis leaves A with the Cycle.\nFurther deductions for state:\n- Kerala is not connected by Cycle to Uttar Pradesh and Rajasthan.\n- Since A used Cycle, A could not go to UP or Rajasthan.\n- B went to Maharashtra, C went to Karnataka.\n- The only remaining state for A is Punjab.\nTable:\nPerson | Destination   | Transport\n-------|---------------|-----------\nA      | Punjab        | Cycle\nB      | Maharashtra   | Train\nC      | Karnataka     | Truck\nD      | Uttar Pradesh | Bike\nE      | Rajasthan     | Bus\nTherefore, A used Cycle."
+            },
+            { // 49
+                question: "Which state did D travel to?",
+                options: ["Rajasthan", "Uttar Pradesh", "Maharashtra", "Karnataka"],
+                answer: "Uttar Pradesh",
+                explanation: "Referring to the deduction table in the explanation for Q48:\nTable:\nPerson | Destination   | Transport\n-------|---------------|-----------\nA      | Punjab        | Cycle\nB      | Maharashtra   | Train\nC      | Karnataka     | Truck\nD      | Uttar Pradesh | Bike\nE      | Rajasthan     | Bus\nD travelled to Uttar Pradesh."
+            },
+            { // 50
+                question: "Look at this series: 90, 10, 80, 15, 70,... What number should come next?",
+                options: ["20", "25", "35", "60"],
+                answer: "20",
+                explanation: "This series consists of two interleaved sequences:\nSequence 1 (positions 1, 3, 5, ...): 90, 80, 70, ... (Decreasing by 10)\nSequence 2 (positions 2, 4, 6, ...): 10, 15, ... (Increasing by 5)\nThe last given number (70) is from Sequence 1. The next number should be from Sequence 2.\nThe next term in Sequence 2 is 15 + 5 = 20."
+            },
+            { // 51
+                question: "Introducing a man, a woman said, \"He is the only son of my mother's mother.\" How is the woman related to the man?",
+                options: ["Mother", "Aunt", "Sister", "Niece"],
+                answer: "Niece",
+                explanation: "Let's break down the relationship:\n- \"my mother's mother\" is the woman's maternal grandmother.\n- \"the only son of my mother's mother\" is the woman's maternal grandmother's only son.\n- The grandmother's son is the woman's mother's brother, which makes him the woman's maternal uncle.\nTherefore, the woman is the man's niece."
+            },
+            { // 52
+                question: "If A x B means A is to south of B; A + B means A is to the north of B; A % B means A is to the east of B; A-B means A is to west of B, then in P% Q+R-S, S is in which direction with respect to Q?",
+                options: ["South-West", "South-East", "North-East", "North-West"],
+                answer: "South-East",
+                explanation: "Let's decode the expression P % Q + R - S:\n1. P % Q: P is East of Q.\n2. Q + R: Q is North of R.\n3. R - S: R is West of S.\nLet's visualize:\n  Q --- P\n  |\n  R --- S\nFrom the diagram, S is to the South and to the East of Q. Therefore, S is in the South-East direction with respect to Q."
+            },
+            { // 53
+                question: "Posthumous Award occurs when an award is given to someone, after their death.\nChoose the situation below as the best example of Posthumous Award.\n(A). Late yesteryear actress Sridevi was awarded with a Lifetime Achievement Award posthumously in Filmfare 2019.\n(B). Chitra never thought she'd live to receive a third booker prize for her novel.\n(C). Emanuel has been honoured with a prestigious literary award for his writing career and his daughter accepted the award on behalf of her deceased father:\n(D). Meenal's publisher cancelled her book contract after she failed to deliver the manuscript on time.\nChoose the correct answer from the options given below:",
+                options: ["(A) only.", "(C) only.", "(A) and (C) only.", "(A), (B) and (C) only."],
+                answer: "(A) and (C) only.",
+                explanation: "A posthumous award is given after the recipient's death.\n(A) Sridevi received the award 'posthumously' (after death). This fits.\n(B) Chitra is alive ('live to receive'). This does not fit.\n(C) Emanuel is deceased, and his daughter accepted the award. This fits.\n(D) This situation is about a cancelled contract, not an award after death. This does not fit.\nTherefore, only situations (A) and (C) are examples of posthumous awards."
+            },
+            { // 54
+                question: "All squares are shapes. Some shapes are blue.\nWhat can we infer about squares?",
+                options: ["Some squares are blue.", "All squares are blue.", "No squares are blue.", "We cannot infer anything about squares."],
+                answer: "Some squares are blue.",
+                explanation: "Statement 1: All squares are shapes (Squares circle inside Shapes circle).\nStatement 2: Some shapes are blue (Shapes circle overlaps with Blue circle).\nThe blue shapes might or might not include the squares. There is no definite conclusion about the relationship between squares and blue based on the given statements.\nDiagrammatically:\nShapes( Squares() Blue() )\nShapes( Squares( Blue() ) )\nShapes( (Squares Blue()) )\nSince the relationship isn't definitively established (it could be some, none, or even all if all shapes were squares and some shapes were blue), logically, 'We cannot infer anything about squares' (D) is the most accurate conclusion.\nHowever, the provided answer key states 'A (As per CET Cell) / D (As per reasoning logic)'. Following the CET Cell answer, we select A. When this question was objected to CET Cell they stayed with no change for the answer and considered A as the correct answer. So as per logic, D should be the answer and as per CET Cell A is the answer."
+            },
+            { // 55
+                question: "Given below is a Situation and two courses of action. These courses of action may or may not follow the Situation.\nSituation:\nThe car dealer found that there was a tremendous response for the new XYZ's car booking with long queues of people complaining about the duration of business hours and arrangements.\nCourses of action:\nI. People should make their arrangement of lunch and snacks while going for car XYZ's booking and be ready to spend several hours.\nII. Arrangement should be made for more booking desks and increase business hours to serve more people in less time.\nDetermine which of the courses of action logically follows the given Situation and choose the correct option from the options given below.",
+                options: ["Only I follows", "Only Il follows", "Neither I nor Il follows", "Both I and II follow"],
+                answer: "Only Il follows",
+                explanation: "The situation describes a problem: long queues and complaints due to high demand and potentially inadequate arrangements/hours.\nCourse of Action I: Asks customers to adapt to the problem, doesn't solve the dealership's issue. It shifts the burden.\nCourse of Action II: Directly addresses the problem by increasing capacity (more desks) and availability (longer hours) to handle the response efficiently.\nTherefore, only Course of Action II logically follows as a solution to the situation."
+            },
+            { // 56
+                question: "Given below is a statement and two assumptions. These assumptions may or may not be implicit in the statement.\nStatement:\nStatement: Anger is energy, in a more proactive way and how to channelise it is in itself a skill.\nAssumption A: Anger need to be channelised.\nAssumption B: Only skilled people can channelise anger to energy.\nDetermine whether one or both assumptions are implicit or not in the given statement and choose the correct option from the options given below:",
+                options: ["Only Assumption A is implicit", "Only Assumption B is implicit", "Neither Assumption A nor Assumptions B are implicit", "Both Assumption A and Assumption B are implicit."],
+                answer: "Only Assumption B is implicit",
+                explanation: "The statement says 'how to channelise it is in itself a skill'.\nAssumption A: 'Anger need to be channelised.' The statement explains how anger *can* be channelised proactively as energy and that doing so is a skill, but it doesn't explicitly state that anger *must* or *needs* to be channelised. It's presented as an option or a perspective.\nAssumption B: 'Only skilled people can channelise anger to energy.' Since the statement explicitly calls the act of channelising anger a 'skill', it implies that skill is required. Therefore, it assumes that skilled people are the ones who can do it effectively.\nHence, only Assumption B is implicitly suggested by the statement."
+            },
+            { // 57
+                question: "What should come in the place of questions mark (?) below.\nPaisa: Rupee ::? : Kilometre",
+                options: ["Hectometre", "Decametre", "Metre", "Quintal"],
+                answer: "Decametre",
+                explanation: "The relationship is based on units within a measurement system. 100 Paisa make 1 Rupee.\nWe need a unit such that 100 of that unit make 1 Kilometre.\n1 Kilometre = 10 Hectometres\n1 Kilometre = 100 Decametres\n1 Kilometre = 1000 Metres\nQuintal is a unit of mass, not length.\nSince 100 Decametres = 1 Kilometre, the relationship matches Paisa:Rupee. Therefore, Decametre is the correct answer."
+            },
+            { // 58
+                question: "Fill in the blank.\nSCD, TEF, UGH, ____, WKL",
+                options: ["IT", "VIL", "VIJ", "UJI"],
+                answer: "VIJ",
+                explanation: "The pattern involves three-letter groups. Let's look at the letters in each position:\n1st letter: S -> T -> U -> V -> W (Consecutive letters: +1)\n2nd letter: C -> E -> G -> I -> K (Letters increasing by 2: +2)\n3rd letter: D -> F -> H -> J -> L (Letters increasing by 2: +2)\nFollowing the pattern, the missing group starts with V (after U), has I (after G+2), and has J (after H+2). So the missing group is VIJ."
+            },
+            { // 59
+                question: "Five friends A, B, C, D and E are sitting on a bench.\n(1) A is sitting next to B\n(2) C is sitting next to D\n(3)D is not sitting with E\n(4) E is on the left end of the bench\n(5) C is on second position from the right.\n(6) A is on the right side of B and to right side of E\n(7) A and C are sitting together:\nWhere is A sitting?",
+                options: ["Between B and D", "Between B and C", "Between C and E", "Between D and C"],
+                answer: "Between B and C",
+                explanation: "Let's deduce the seating arrangement:\n(4) E is on the left end: E _ _ _ _\n(5) C is second from the right: _ _ _ C _\n(2) C is next to D: Since C is second from right, D must be on the right end: _ _ _ C D\n(4) E is left end: E _ _ C D\n(1) A is next to B: (A B) or (B A)\n(7) A and C are sitting together: Since C is at the 4th position, A must be at the 3rd: E _ A C D\n(1) A is next to B & (6) A is on the right of B: B must be to the left of A: E B A C D\nThis arrangement satisfies all conditions:\n- E is left end.\n- C is second from right.\n- D is not with E.\n- A is next to B.\n- C is next to D.\n- A is right of B and E.\n- A and C are together.\nThe final arrangement is: E B A C D.\nA is sitting between B and C."
+            },
+            { // 60
+                question: "REASON is coded as 5 and BELIEVED as 7, then what is the code for GOVERNMENT?",
+                options: ["6", "8", "9", "10"],
+                answer: "9",
+                explanation: "The code seems to be the number of letters in the word minus 1.\nREASON: 6 letters -> 6 - 1 = 5\nBELIEVED: 8 letters -> 8 - 1 = 7\nApplying this logic to GOVERNMENT:\nGOVERNMENT: 10 letters -> 10 - 1 = 9\nTherefore, the code for GOVERNMENT is 9."
+            },
+            { // 61
+                question: "In the question below, Three statements are given followed by two conclusions. Take the given statement to be true despite being at variance with known facts.\nStatement:\nNo giraffe is a leopard.\nAll leopards are kangaroos.\nAll kangaroos are wolves.\nConclusion A: All kangaroos can never be giraffes\nConclusion B: All giraffes are definitely wolves.\nFind which of the given conclusion(s) logically follow(s) from the given statements and choose the correct option from the options given below:",
+                options: ["Only conclusions (A) follows", "Only conclusion (B) follows", "Either conclusion (A) or conclusion (B) follows", "Both conclusions (A) and (B) follow"],
+                answer: "Only conclusions (A) follows",
+                explanation: "Let's represent the statements using sets/Venn diagrams:\n- No Giraffe is Leopard (G and L are disjoint sets).\n- All Leopards are Kangaroos (L is a subset of K).\n- All Kangaroos are Wolves (K is a subset of W).\nDiagram: [Wolf Circle [Kangaroo Circle [Leopard Circle] ] ] [Giraffe Circle] (Giraffe is separate from Leopard, Kangaroo, Wolf relations are nested)\nConclusion A: All kangaroos can never be giraffes. Since all Leopards are Kangaroos, and No Giraffe is a Leopard, it means the part of Kangaroos that are Leopards cannot be Giraffes. Can *all* Kangaroos be Giraffes? No, because that would imply Leopards are Giraffes, which contradicts the first statement. So, it's true that 'All kangaroos can never be giraffes'.\nConclusion B: All giraffes are definitely wolves. There is no information linking Giraffes to Wolves. Giraffes could be outside the Wolf set. So, this is not definitely true.\nTherefore, only Conclusion A follows."
+            },
+            { // 62
+                question: "If the English letters A to Z are written in a reverse order then what is the fourth letter to the right of 12th letter from the left?",
+                options: ["S", "R", "K", "L"],
+                answer: "K",
+                explanation: "The reverse order is: Z Y X W V U T S R Q P O N M L K J I H G F E D C B A\nThe 12th letter from the left is O.\nWe need the fourth letter to the right of O.\nCounting 4 letters to the right from O: N(1), M(2), L(3), K(4).\nThe required letter is K.\nAlternatively, the position is 12th from left + 4 to the right = 16th letter from the left in the reversed sequence.\nThe 16th letter from the left in ZYX... is K."
+            },
+            { // 63
+                question: "Find the odd one out from the given options.",
+                options: ["Book: Author", "Art: Artist", "Patients: Doctor", "Invention: Scientist"],
+                answer: "Patients: Doctor",
+                explanation: "The relationship in the pairs is generally 'Creation : Creator' or 'Product : Producer'.\nA. Book (Creation) : Author (Creator)\nB. Art (Creation) : Artist (Creator)\nC. Patients : Doctor - A doctor treats patients; a doctor doesn't create patients.\nD. Invention (Creation) : Scientist (Creator)\nThe pair 'Patients: Doctor' does not fit the 'Creation: Creator' pattern. Thus, it is the odd one out."
+            },
+            { // 64
+                question: "The total amount of bonus paid by the company during the given period is approximately what percent of the total amount of salary paid during this period?",
+                options: ["0.1%", "0.5%", "1%", "1.25%"],
+                answer: "1%",
+                explanation: "From the table (1998 to 2002):\nTotal Bonus = 3.00 + 2.52 + 3.84 + 3.68 + 3.96 = 17.00 Lakh Rupees\nTotal Salary = 288 + 342 + 324 + 336 + 410 = 1700 Lakh Rupees\nPercentage = (Total Bonus / Total Salary) * 100\nPercentage = (17.00 / 1700) * 100\nPercentage = (17 / 1700) * 100\nPercentage = (1 / 100) * 100 = 1%"
+            },
+            { // 65
+                question: "The ratio between the total expenditure on taxes for all the years and the total expenditure on fuel and transport for all the years respectively is approximately?",
+                options: ["4:7", "5:8", "10:13", "15:18"],
+                answer: "10:13",
+                explanation: "From the table (1998 to 2002):\nTotal Taxes = 83 + 108 + 74 + 88 + 98 = 451 Lakh Rupees\nTotal Fuel and Transport = 98 + 112 + 101 + 133 + 142 = 586 Lakh Rupees\nRatio = Total Taxes : Total Fuel and Transport = 451 : 586\nLet's approximate the ratio:\n451 / 586 ≈ 0.7696\nNow check the options:\nA. 4 / 7 ≈ 0.571\nB. 5 / 8 = 0.625\nC. 10 / 13 ≈ 0.7692\nD. 15 / 18 = 5 / 6 ≈ 0.833\nThe ratio 10:13 is the closest approximation to 451:586."
+            },
+            { // 66
+                question: "Find the number of three - digit numbers which are divisible by 6.",
+                options: ["106", "130", "150", "110"],
+                answer: "150",
+                explanation: "Three-digit numbers range from 100 to 999.\nWe need numbers divisible by 6 in this range.\nThe first three-digit number divisible by 6 is 102 (6 * 17).\nThe last three-digit number divisible by 6 is 996 (6 * 166).\nThese numbers form an arithmetic progression: 102, 108, ..., 996 with a common difference of 6.\nLet a = 102, d = 6, an = 996. We need to find n (the number of terms).\nan = a + (n-1)d\n996 = 102 + (n-1)6\n996 - 102 = (n-1)6\n894 = (n-1)6\n894 / 6 = n-1\n149 = n-1\nn = 149 + 1 = 150\nThere are 150 three-digit numbers divisible by 6."
+            },
+            { // 67
+                question: "What shall come in place of (?) Questions mark?\nFlow: River :: Stagnant : ?",
+                options: ["Canal", "Dam", "Ocean", "Pool"],
+                answer: "Pool",
+                explanation: "The relationship is Characteristic : Thing exhibiting Characteristic.\nA River is characterized by Flowing water.\nWe need a thing characterized by Stagnant (still, not flowing) water.\n- Canal: Water flows, often controlled.\n- Dam: Structure holds back water, creating a reservoir which might be relatively stagnant, but the primary association isn't stagnation itself.\n- Ocean: Water moves (currents, tides).\n- Pool: Water is typically still or stagnant.\nPool best fits the analogy."
+            },
+            { // 68
+                question: "From the given options, find the pair which is similar to the given pair:\n27:9",
+                options: ["64:16", "72:18", "45:5", "37:13"],
+                answer: "64:16",
+                explanation: "The relationship in the pair 27:9 is:\n27 = 3^3\n9 = 3^2\nThe relationship is x^3 : x^2.\nLet's check the options for the same relationship:\nA. 64:16 -> 64 = 4^3, 16 = 4^2. This follows the x^3 : x^2 pattern with x=4.\nB. 72:18 -> Ratio is 4:1.\nC. 45:5 -> Ratio is 9:1.\nD. 37:13 -> No simple power relationship.\nThus, 64:16 is similar to 27:9."
+            },
+            { // 69
+                question: "What should come in the place of question mark (?) below.\nMelt: Liquid:: Freeze : ?",
+                options: ["Ice", "Solid", "Condense", "Push"],
+                answer: "Solid",
+                explanation: "The relationship is Process : Resulting State of Matter.\nMelting turns a substance into a Liquid state.\nFreezing turns a substance into a Solid state.\n'Ice' is a specific example of a solid (frozen water), but 'Solid' represents the general state, which parallels 'Liquid'. 'Condense' is another change of state (gas to liquid)."
+            },
+            { // 70
+                question: "What should come in the place of question mark (?) in the following alpha - numeric series?\nC-3, E-5, G-7, I-9, ?, ?",
+                options: ["X-24, M-21", "K-11, M-13", "O- 15, X-24", "M-18, K-14"],
+                answer: "K-11, M-13",
+                explanation: "The series has two components: letters and numbers.\nLetter sequence: C, E, G, I, ... (Each letter is 2 steps ahead in the alphabet: C+2=E, E+2=G, G+2=I)\nNumber sequence: 3, 5, 7, 9, ... (Each number increases by 2: 3+2=5, 5+2=7, 7+2=9)\nFollowing the pattern:\nNext letter after I is I+2 = K.\nNext number after 9 is 9+2 = 11.\nSo the next term is K-11.\nThe letter after K is K+2 = M.\nThe number after 11 is 11+2 = 13.\nSo the term after that is M-13.\nThe two missing terms are K-11, M-13."
+            },
+            { // 71
+                question: "What is the theme of 75th UN Peacekeepers Day?",
+                options: ["Peace Begins with me", "Life of Peacekeepers", "Security for Peacekeepers", "Peace for Everyone"],
+                answer: "Peace Begins with me",
+                explanation: "The '75th UN Peacekeepers Day' is observed on 29 May every year. \"Peace begins with me\" is the theme of the 75th anniversary of Peacekeepers Day (in 2023). The United Nations Interim Force in Lebanon, or UNIFIL marked the International Day of United Nations Peacekeepers and the 75th anniversary of United Nations peacekeeping."
+            },
+            { // 72
+                question: "Which organization issued electoral bond in India?",
+                options: ["NABARD", "State bank of India", "RBI", "ICICI"],
+                answer: "State bank of India",
+                explanation: "• The State Bank of India (SBI) is the authorized institution that issues electoral bonds in India.\n• These bonds are used for political party funding and can be purchased by Indian citizens or entities.\n• The government notified the Electoral Bond Scheme in January 2018.\nElectoral bonds are valid for 15 calendar days from date of issuance and no payment is made to any payee political party if bonds are deposited after expiry of validity period. (Note: Electoral Bonds were struck down by the Supreme Court of India in Feb 2024, but SBI was the issuer when they were active)."
+            },
+            { // 73
+                question: "Which department launched the 'Automated Return Scrutiny Module for GST returns'?",
+                options: ["NAASCOM", "RBI", "NITI Aayog", "Central Board of Indirect Taxes"],
+                answer: "Central Board of Indirect Taxes",
+                explanation: "The Central Board of Indirect Taxes and Customs (CBIC) launched the Automated Return Scrutiny Module for GST returns. This module aims to streamline the scrutiny process for GST returns by automating the examination of GST filings, ensuring greater compliance and efficiency."
+            },
+            { // 74
+                question: "Which of the following styles of painting belongs to Maharashtra?",
+                options: ["Minature", "Madhubani", "Kalam", "Warli"],
+                answer: "Warli",
+                explanation: "Warli painting is a traditional tribal art form originating from the Warli tribe in the North Sahyadri Range in Maharashtra, India. It is known for its simple, geometric shapes (circles, triangles, squares) depicting scenes of daily life, nature, and rituals. Madhubani is from Bihar, Miniature paintings have various regional schools, and Kalamkari is from Andhra Pradesh/Telangana."
+            },
+            { // 75
+                question: "The market of money where the stocks are traded is called:",
+                options: ["Short term market", "Capital Market", "Long term market", "Financial market"],
+                answer: "Capital Market",
+                explanation: "The capital market is the segment of the financial market where long-term financial instruments, such as stocks (equities) and bonds (debt), are traded. It facilitates the raising of long-term funds for companies and governments. The money market deals with short-term instruments. The financial market is the broad term encompassing both."
+            },
+            { // 76
+                question: "In an e commerce transaction which of the following payment modes is not an e- payment?",
+                options: ["Debit card", "E wallet payment", "Cash on delivery payment", "Google Pay"],
+                answer: "Cash on delivery payment",
+                explanation: "E-payment refers to electronic payment methods where funds are transferred digitally. Debit card, E-wallet payment (like Paytm, PhonePe), and Google Pay all involve electronic transfer of funds. Cash on delivery (COD) involves paying with physical cash when the goods are delivered, hence it is not an electronic payment."
+            },
+            { // 77
+                question: "What is the launch date for chandrayaan-3 mission?",
+                options: ["24th July 23", "14th July 23", "22nd July 23", "10th July 23"],
+                answer: "14th July 23",
+                explanation: "Chandrayaan-3, India's third lunar exploration mission, was launched by the Indian Space Research Organisation (ISRO) on 14th July 2023. It successfully landed on the Moon's south pole region on 23rd August 2023."
+            },
+            { // 78
+                question: "Who was named the 2023 ITF world champion by the international Tennis Federations (ITF)?",
+                options: ["Danii Medvedev", "Rajeev Ram", "Novak Djokovic", "Carlos Alcaraz"],
+                answer: "Novak Djokovic",
+                explanation: "The International Tennis Federation (ITF) named Novak Djokovic (Serbia) and Aryna Sabalenka (Belarus) as the 2023 ITF World Champions in singles. This recognized their outstanding performances, particularly in Grand Slam tournaments during the year."
+            },
+            { // 79
+                question: "Who is called the Darwin of 20th century?",
+                options: ["Marshall Warren Nirenburg", "Kathrine Esau", "Har Gobind khorana", "Ernst Mayr"],
+                answer: "Ernst Mayr",
+                explanation: "Ernst Mayr (1904–2005) was one of the 20th century's leading evolutionary biologists. His work on speciation, the biological species concept, and the modern evolutionary synthesis earned him the title 'Darwin of the 20th century'."
+            },
+            { // 80
+                question: "Which city was the host of the first ever Khelo India para games in 2023?",
+                options: ["Ahmedabad", "Telangana", "Pune", "New Delhi"],
+                answer: "New Delhi",
+                explanation: "The inaugural Khelo India Para Games were held in New Delhi from December 10 to December 17, 2023. The event saw participation from para-athletes across India in various sports disciplines."
+            },
+            { // 81
+                question: "What is the full form of BIOS",
+                options: ["Basic In/out system", "Basic Input/output system", "Basic Investment/ output system", "Basic Input/output station"],
+                answer: "Basic Input/output system",
+                explanation: "BIOS stands for Basic Input/Output System. It is firmware stored on a chip on the computer's motherboard. It initializes hardware components during the boot process (startup) and provides basic runtime services for the operating system and programs."
+            },
+            { // 82
+                question: "GPRS is used for",
+                options: ["Database", "Discovery Tool", "Geolocation", "Invisible web"],
+                answer: "Geolocation",
+                explanation: "GPRS (General Packet Radio Service) is a mobile data standard that allows for packet-switched data transmission over cellular networks. While it enables general internet access on mobile devices, one of its key applications is providing data connectivity for services like mobile internet browsing, MMS, and location-based services (Geolocation)."
+            },
+            { // 83
+                question: "Which union ministry launched the 'YUVA PORTAL' to identify potential young start-ups?",
+                options: ["Ministry of youth affairs and sports", "Ministry of Science and technology", "Ministry of housing and Urban Affairs", "Ministry of power"],
+                answer: "Ministry of youth affairs and sports",
+                explanation: "The YUVA PORTAL was launched by Union Minister Dr. Jitendra Singh, who holds portfolios including Science and Technology. The portal aims to connect and identify potential young innovators and entrepreneurs. While launched by the Science & Technology Minister, the focus on 'Young Start-ups' aligns it thematically with Youth Affairs, and the provided answer is Ministry of Youth Affairs and Sports. The portal likely involves collaboration or targets youth initiatives."
+            },
+            { // 84
+                question: "What was the theme of the G20 summit hosted in India?",
+                options: ["Making the world together", "Fighting poverty with rigidity", "Shaping an interconnected world", "\"One Earth One Family One Future\""],
+                answer: "\"One Earth One Family One Future\"",
+                explanation: "India hosted the G20 Summit in New Delhi in September 2023. The theme for India's G20 Presidency was \"Vasudhaiva Kutumbakam\" or \"One Earth · One Family · One Future\". This theme is drawn from the ancient Sanskrit text of the Maha Upanishad, emphasizing the interconnectedness of the world."
+            },
+            { // 85
+                question: "Who took the highest wickets in world cup 2023?",
+                options: ["Shaheen Afridi", "Mohammed Shami", "Dishan Madushanka", "Adam Zampa"],
+                answer: "Mohammed Shami",
+                explanation: "India's fast bowler Mohammed Shami was the leading wicket-taker in the ICC Men's Cricket World Cup 2023. Despite playing fewer matches initially, he finished the tournament with 24 wickets in just 7 matches."
+            },
+            { // 86
+                question: "Computer organization deals with ____ design issues",
+                options: ["Low level", "High level", "Middle level", "First level"],
+                answer: "Low level",
+                explanation: "Computer organization focuses on the operational units and their interconnections that realize the architectural specifications. It deals with the structural relationships and functional units of a computer system at a lower level, concerning how hardware components like CPU, memory, and I/O devices are structured and interconnected (e.g., control signals, interfaces)."
+            },
+            { // 87
+                question: "The ____ unit is often known as the computer system's nerve center:",
+                options: ["Input Unit", "Output unit", "Arithmetic and logic unit", "Control Unit"],
+                answer: "Control Unit",
+                explanation: "The Control Unit (CU), a component of the CPU, directs and coordinates most of the operations within the computer. It interprets instructions fetched from memory and generates control signals to activate other units (like ALU, memory, I/O devices) to execute these instructions, much like a nerve center coordinates actions."
+            },
+            { // 88
+                question: "The first computer architecture was designed (or developed) in",
+                options: ["1970", "1980", "1990", "2000"],
+                answer: "1970",
+                explanation: "While foundational concepts like the Von Neumann architecture date back to the 1940s, the development of distinct, influential, and commercially implemented computer architectures (like those for early microprocessors such as the Intel 4004 in 1971 or the Intel 8080 in 1974) significantly took shape and were designed/developed in the 1970s, marking the beginning of modern processor architectures."
+            },
+            { // 89
+                question: "The computer system is controlled by which component?",
+                options: ["CPU", "RAM", "ROM", "ALU"],
+                answer: "CPU",
+                explanation: "The CPU (Central Processing Unit) is the brain of the computer. It fetches instructions from memory (RAM/ROM), decodes them, and executes them, thereby controlling all the operations and functions of the computer system. RAM and ROM are types of memory, and the ALU (Arithmetic Logic Unit) performs calculations as directed by the CPU's control unit."
+            },
+            { // 90
+                question: "What is the primary function of the CPU?",
+                options: ["To display images on the screen", "To process data and execute instructions", "To store data permanently", "To connect to the internet"],
+                answer: "To process data and execute instructions",
+                explanation: "The core role of the Central Processing Unit (CPU) is to perform the calculations, logical operations, and control flow specified by program instructions. It fetches instructions, decodes them, executes them using components like the ALU, and manages data flow, thus processing data and executing program instructions."
+            },
+            { // 91
+                question: "Monitors are also known as?",
+                options: ["ADU", "ALU", "VCU", "VDU"],
+                answer: "VDU",
+                explanation: "A monitor is an output device that displays visual information from the computer. It is commonly referred to as a VDU, which stands for Visual Display Unit."
+            },
+            { // 92
+                question: "____ is an input device that is mostly used in notebook or laptop computer:",
+                options: ["Light Pen", "Track Ball", "Scanner", "Digitizer"],
+                answer: "Track Ball",
+                explanation: "While touchpads are the most common pointing device on modern laptops, trackballs were also frequently integrated into older laptops or used as alternative external pointing devices. A trackball is essentially an upside-down mouse where the user rolls a ball with their thumb or fingers to move the cursor. Light pens, scanners, and digitizers are less commonly integrated directly into laptops for standard cursor control."
+            },
+            { // 93
+                question: "Primary Memory is also known as",
+                options: ["Volatile Memory", "Non-volatile memory", "Cache Memory", "Permanent memory"],
+                answer: "Volatile Memory",
+                explanation: "Primary memory, mainly referring to RAM (Random Access Memory), is volatile. This means it requires constant power to retain stored data. When the power is turned off, the contents of volatile memory are lost. Non-volatile memory (like ROM, SSD, HDD) retains data without power."
+            },
+            { // 94
+                question: "Which of the following is not an example of system software?",
+                options: ["Language translator", "Utility software", "Word processors", "Communication software"],
+                answer: "Word processors",
+                explanation: "System software manages the computer hardware and provides a platform for application software. Examples include operating systems, device drivers, utility software (like disk cleanup), and language translators (compilers, interpreters). Word processors (like Microsoft Word, Google Docs) are application software, designed for specific user tasks (creating documents)."
+            },
+            { // 95
+                question: "Which of the following is an example of secondary memory?",
+                options: ["RAM", "CD - ROM", "ROM", "CPU"],
+                answer: "CD - ROM",
+                explanation: "Secondary memory (or secondary storage) provides long-term, non-volatile storage. Examples include Hard Disk Drives (HDD), Solid State Drives (SSD), USB drives, and optical discs like CD-ROM (Compact Disc Read-Only Memory). RAM is primary volatile memory. ROM is primary non-volatile memory (typically). CPU is the processor, not memory."
+            },
+            { // 96
+                question: "Which of the following terms is used to define all input and output devices?",
+                options: ["Hardware", "Software", "Interpreter", "Compiler"],
+                answer: "Hardware",
+                explanation: "Hardware refers to the physical components of a computer system that you can touch. This includes input devices (keyboard, mouse, scanner), output devices (monitor, printer, speakers), the CPU, memory (RAM, ROM), storage devices (HDD, SSD), and other peripherals. Software refers to programs and data. Interpreters and compilers are types of software (language translators)."
+            },
+            { // 97
+                question: "Which of the following are advantage of mouse?",
+                options: ["Difficult to use", "Very expensive", "Moves the cursor slower than the arrows keys of the keyboard", "Easy to use"],
+                answer: "Easy to use",
+                explanation: "Compared to using only keyboard commands, especially in graphical user interfaces (GUIs), a mouse is generally considered easy and intuitive to use for pointing, clicking, selecting, and dragging operations. While arrow keys can move the cursor, the mouse often allows for faster and more direct navigation across the screen."
+            },
+            { // 98
+                question: "The memory is divided into large number of small parts called?",
+                options: ["Cells", "Location", "Rows", "Columns"],
+                answer: "Cells",
+                explanation: "Computer memory is conceptually divided into many small, fixed-size units called memory cells (or memory locations). Each cell can store a piece of data (like a byte or a word) and has a unique address used by the CPU to access it."
+            },
+            { // 99
+                question: "CPU controls the operation of all parts of the computer.",
+                options: ["True", "False", "Can be true or false", "Cannot say"],
+                answer: "True",
+                explanation: "The CPU (Central Processing Unit), specifically its Control Unit, is responsible for fetching instructions, interpreting them, and directing other components (like memory, ALU, I/O devices) to perform the necessary actions. It orchestrates the overall operation of the computer system."
+            },
+            { // 100
+                question: "Secondary memory is also known as",
+                options: ["Volatile memory", "Non - volatile memory", "Solid memory", "Liquid memory"],
+                answer: "Non - volatile memory",
+                explanation: "Secondary memory (like HDDs, SSDs, USB drives, CDs) is non-volatile, meaning it retains stored information even when the power supply is turned off. This contrasts with primary memory (RAM), which is typically volatile."
+            }
+        ];
+    
+
+        // --- State Variables ---
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(quizData.length).fill(null);
+        let questionStatus = new Array(quizData.length).fill('default');
+        let markedForReview = new Array(quizData.length).fill(false);
+        let timeSpentPerQuestion = new Array(quizData.length).fill(0);
+        let questionTimerInterval;
+        let totalTimerInterval;
+        let questionViewStartTime = null;
+        let totalTimeSeconds = 90 * 60;
+        let userName = "";
+        let timeChart = null;
+        const QUESTION_TIME_LIMIT = 45;
+
+        // --- DOM Elements ---
+        const landingPage = document.getElementById('landing-page');
+        const quizPage = document.getElementById('quiz-page');
+        const resultsPage = document.getElementById('results-page');
+        const nameInput = document.getElementById('name-input');
+        const startQuizButton = document.getElementById('start-quiz-button');
+        const userNameDisplay = document.getElementById('user-name');
+        const resultUserNameDisplay = document.getElementById('result-user-name');
+        const totalTimerDisplay = document.getElementById('total-timer');
+        const questionNavList = document.getElementById('question-nav-list');
+        const currentQuestionNumberDisplay = document.getElementById('current-question-number');
+        const questionTimerDisplay = document.getElementById('question-timer');
+        const questionText = document.getElementById('question-text');
+        const optionsList = document.getElementById('options-list');
+        const prevButton = document.getElementById('prev-button');
+        const reviewButton = document.getElementById('review-button');
+        const nextButton = document.getElementById('next-button');
+        const scoreDisplay = document.getElementById('score');
+        const totalMarksDisplay = document.getElementById('total-marks');
+        const wrongUnansweredList = document.getElementById('wrong-unanswered-list');
+        const timeChartCanvas = document.getElementById('timeChart');
+        const imageContainer = document.getElementById('question-image-container'); // <-- Get image container
+
+        // --- Functions ---
+
+        function showPage(pageId) {
+            landingPage.classList.add('hidden');
+            quizPage.classList.add('hidden');
+            resultsPage.classList.add('hidden');
+            const pageToShow = document.getElementById(pageId);
+            if (pageToShow) {
+                pageToShow.classList.remove('hidden');
+            }
+        }
+
+        function startQuiz() {
+            userName = nameInput.value.trim() || "Guest";
+            userNameDisplay.textContent = userName;
+            resultUserNameDisplay.textContent = userName;
+            showPage('quiz-page');
+
+            totalMarksDisplay.textContent = quizData.length;
+            initializeQuestionNav();
+            loadQuestion(currentQuestionIndex);
+            startTotalTimer();
+        }
+
+        function initializeQuestionNav() {
+            questionNavList.innerHTML = '';
+            quizData.forEach((_, index) => {
+                const li = document.createElement('li');
+                li.textContent = index + 1;
+                li.classList.add('question-nav-item', `status-${questionStatus[index]}`);
+                li.dataset.index = index;
+                li.addEventListener('click', () => navigateToQuestion(index));
+                questionNavList.appendChild(li);
+            });
+             updateQuestionNavHighlight();
+        }
+
+        function updateQuestionNavHighlight() {
+             const items = questionNavList.querySelectorAll('.question-nav-item');
+             items.forEach((item, index) => {
+                 item.style.borderColor = '';
+                 item.style.borderWidth = '';
+                 if (index === currentQuestionIndex) {
+                     item.style.borderColor = '#007bff';
+                     item.style.borderWidth = '2px';
+                 }
+             });
+        }
+
+
+        function updateSingleQuestionNavStatus(index) {
+            const item = questionNavList.querySelector(`.question-nav-item[data-index="${index}"]`);
+            if (item) {
+                item.classList.remove('status-default', 'status-answered', 'status-unanswered', 'status-review', 'status-answered-review');
+                item.classList.add(`status-${questionStatus[index]}`);
+            }
+        }
+
+        function recordTimeSpent() {
+            if (questionViewStartTime !== null) {
+                const timeElapsedThisVisit = (Date.now() - questionViewStartTime) / 1000;
+                if (timeElapsedThisVisit > 0) {
+                    timeSpentPerQuestion[currentQuestionIndex] += timeElapsedThisVisit;
+                }
+                questionViewStartTime = null;
+            }
+        }
+
+        function updateStatus(index) {
+            const answered = userAnswers[index] !== null;
+            const reviewed = markedForReview[index];
+            let currentStatus = questionStatus[index];
+            let newStatus = currentStatus;
+
+            if (answered && reviewed) {
+                newStatus = 'answered-review';
+            } else if (answered && !reviewed) {
+                newStatus = 'answered';
+            } else if (!answered && reviewed) {
+                newStatus = 'review';
+            } else if (!answered && !reviewed) {
+                if (currentStatus === 'unanswered') {
+                    newStatus = 'unanswered';
+                } else if (currentStatus === 'default') {
+                     newStatus = 'default';
+                } else {
+                    newStatus = 'unanswered';
+                }
+            }
+
+            if (newStatus !== currentStatus) {
+                questionStatus[index] = newStatus;
+                updateSingleQuestionNavStatus(index);
+            }
+        }
+
+        function finalizeStatusOnLeave(index) {
+            const answered = userAnswers[index] !== null;
+            const reviewed = markedForReview[index];
+            let finalStatus = questionStatus[index];
+
+            if (!answered && !reviewed) {
+                finalStatus = 'unanswered';
+            } else if (answered && reviewed) {
+                finalStatus = 'answered-review';
+            } else if (answered && !reviewed) {
+                finalStatus = 'answered';
+            } else if (!answered && reviewed) {
+                finalStatus = 'review';
+            }
+
+            if (finalStatus !== questionStatus[index]) {
+                questionStatus[index] = finalStatus;
+            }
+            updateSingleQuestionNavStatus(index);
+        }
+
+
+        function loadQuestion(index) {
+            const question = quizData[index];
+            currentQuestionNumberDisplay.textContent = `Question ${index + 1} of ${quizData.length}`;
+            questionText.textContent = question.question;
+
+            // --- NEW: Handle Image Display ---
+            imageContainer.innerHTML = ''; // Clear previous image
+            if (question.image) {
+                const imgElement = document.createElement('img');
+                imgElement.src = question.image;
+                imgElement.alt = `Image for question ${index + 1}`; // Add alt text
+                // Style applied via CSS now
+                imageContainer.appendChild(imgElement);
+            }
+            // --- END NEW ---
+
+            optionsList.innerHTML = '';
+            question.options.forEach((option, i) => {
+                const li = document.createElement('li');
+                const inputId = `q${index}_option${i}`;
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = `question${index}`;
+                input.value = option;
+                input.id = inputId;
+                input.checked = userAnswers[index] === option;
+                input.addEventListener('change', () => {
+                    userAnswers[index] = option;
+                    updateStatus(index);
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = inputId;
+                label.textContent = option;
+
+                li.appendChild(input);
+                li.appendChild(label);
+                optionsList.appendChild(li);
+            });
+
+            prevButton.disabled = index === 0;
+            nextButton.textContent = index === quizData.length - 1 ? 'Submit' : 'Next';
+
+            reviewButton.textContent = markedForReview[index] ? 'Unmark Review' : 'Mark for Review';
+            reviewButton.style.backgroundColor = markedForReview[index] ? '#5a32a3' : '#6f42c1';
+
+            questionViewStartTime = Date.now();
+            startQuestionTimer();
+
+            updateQuestionNavHighlight();
+
+            const questionAreaWrapper = document.querySelector('.question-area-wrapper');
+            if (questionAreaWrapper) questionAreaWrapper.scrollTop = 0;
+        }
+
+        function navigateToQuestion(index) {
+            if (index < 0 || index >= quizData.length || index === currentQuestionIndex) return;
+
+            const leavingIndex = currentQuestionIndex;
+            recordTimeSpent();
+            finalizeStatusOnLeave(leavingIndex);
+
+            currentQuestionIndex = index;
+            loadQuestion(currentQuestionIndex);
+        }
+
+        function handleNext() {
+             const leavingIndex = currentQuestionIndex;
+             recordTimeSpent();
+             finalizeStatusOnLeave(leavingIndex);
+
+             if (currentQuestionIndex < quizData.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion(currentQuestionIndex);
+            } else {
+                submitQuiz();
+            }
+        }
+
+        function handlePrev() {
+            const leavingIndex = currentQuestionIndex;
+            recordTimeSpent();
+            finalizeStatusOnLeave(leavingIndex);
+
+            if (currentQuestionIndex > 0) {
+               currentQuestionIndex--;
+               loadQuestion(currentQuestionIndex);
+            }
+        }
+
+        function toggleReview() {
+            markedForReview[currentQuestionIndex] = !markedForReview[currentQuestionIndex];
+            updateStatus(currentQuestionIndex);
+            reviewButton.textContent = markedForReview[currentQuestionIndex] ? 'Unmark Review' : 'Mark for Review';
+            reviewButton.style.backgroundColor = markedForReview[currentQuestionIndex] ? '#5a32a3' : '#6f42c1';
+        }
+
+
+        function startQuestionTimer() {
+            clearInterval(questionTimerInterval);
+
+            function updateTimerDisplay() {
+                let totalTimeSpentSoFar = timeSpentPerQuestion[currentQuestionIndex];
+                let timeElapsedThisVisit = 0;
+
+                if (questionViewStartTime) {
+                    timeElapsedThisVisit = (Date.now() - questionViewStartTime) / 1000;
+                }
+
+                let currentTotalTime = totalTimeSpentSoFar + timeElapsedThisVisit;
+                let displayTime = Math.round(currentTotalTime);
+
+                questionTimerDisplay.classList.remove('red');
+
+                if (currentTotalTime > QUESTION_TIME_LIMIT) {
+                    let exceededTime = Math.round(currentTotalTime - QUESTION_TIME_LIMIT);
+                    questionTimerDisplay.textContent = `Exceeded: ${exceededTime}s`;
+                    questionTimerDisplay.classList.add('red');
+                } else {
+                     questionTimerDisplay.textContent = `Time: ${displayTime}s`;
+                }
+            }
+
+            updateTimerDisplay();
+            questionTimerInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        function startTotalTimer() {
+            clearInterval(totalTimerInterval);
+            let currentTime = totalTimeSeconds;
+
+            totalTimerInterval = setInterval(() => {
+                currentTime--;
+                if (currentTime <= 0) {
+                    clearInterval(totalTimerInterval);
+                    totalTimerDisplay.textContent = '00:00';
+                    alert("Finished🩻");
+                    submitQuiz();
+                } else {
+                    const minutes = Math.floor(currentTime / 60);
+                    const seconds = currentTime % 60;
+                    totalTimerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        function submitQuiz() {
+            recordTimeSpent();
+            finalizeStatusOnLeave(currentQuestionIndex);
+            clearInterval(questionTimerInterval);
+            clearInterval(totalTimerInterval);
+
+             questionStatus.forEach((status, index) => {
+                 if (index !== currentQuestionIndex) {
+                     finalizeStatusOnLeave(index);
+                 }
+             });
+
+            calculateResults();
+            showPage('results-page');
+        }
+
+        function calculateResults() {
+            let score = 0;
+            wrongUnansweredList.innerHTML = '';
+
+            quizData.forEach((question, index) => {
+                const isCorrect = userAnswers[index] === question.answer;
+                if (isCorrect) {
+                    score++;
+                }
+
+                if (questionStatus[index] === 'unanswered' || (userAnswers[index] !== null && !isCorrect)) {
+                    const resultItem = document.createElement('div');
+                    resultItem.classList.add('result-item');
+
+                    const qText = document.createElement('p');
+                    qText.classList.add('question');
+                    qText.innerHTML = `<strong>Q${index + 1}:</strong> ${question.question}`;
+                    resultItem.appendChild(qText);
+
+                    const yourAns = document.createElement('p');
+                    yourAns.innerHTML = `<strong>Your Answer:</strong> `;
+                    if (userAnswers[index] !== null) {
+                         yourAns.innerHTML += `<span class="your-answer">${userAnswers[index]}</span>`;
+                    } else {
+                         yourAns.innerHTML += `<span class="your-answer">Not Answered</span>`;
+                    }
+                     resultItem.appendChild(yourAns);
+
+
+                    const correctAns = document.createElement('p');
+                    correctAns.innerHTML = `<strong>Correct Answer:</strong> <span class="correct-answer">${question.answer}</span>`;
+                    resultItem.appendChild(correctAns);
+
+                    const explanation = document.createElement('p');
+                    explanation.classList.add('explanation');
+                    explanation.textContent = question.explanation;
+                    resultItem.appendChild(explanation);
+
+                    wrongUnansweredList.appendChild(resultItem);
+                }
+            });
+
+            scoreDisplay.textContent = score;
+            totalMarksDisplay.textContent = quizData.length;
+
+            setTimeout(generateTimeChart, 100);
+        }
+
+         function generateTimeChart() {
+            const ctx = timeChartCanvas.getContext('2d');
+             if (!ctx) {
+                console.error("Failed to get canvas context for time chart.");
+                return;
+            }
+            const labels = quizData.map((_, index) => `Q${index + 1}`);
+            const data = timeSpentPerQuestion.map(time => Math.round(time));
+
+            const normalColor = 'rgba(0, 123, 255, 0.3)';
+            const exceededColor = 'rgba(220, 53, 69, 0.3)';
+            const normalBorder = 'rgba(0, 123, 255, 1)';
+            const exceededBorder = 'rgba(220, 53, 69, 1)';
+
+            if (timeChart) {
+                timeChart.destroy();
+            }
+
+            try {
+                timeChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Time Spent (seconds)',
+                                data: data,
+                                fill: true,
+                                tension: 0.3,
+                                segment: {
+                                    borderColor: ctx => (ctx.p1.parsed.y > QUESTION_TIME_LIMIT) ? exceededBorder : normalBorder,
+                                    backgroundColor: ctx => {
+                                        const y1 = ctx.p0.parsed.y;
+                                        const y2 = ctx.p1.parsed.y;
+                                        return (y1 > QUESTION_TIME_LIMIT || y2 > QUESTION_TIME_LIMIT) ? exceededColor : normalColor;
+                                    }
+                                },
+                                 pointBackgroundColor: ctx => data[ctx.dataIndex] > QUESTION_TIME_LIMIT ? exceededBorder : normalBorder,
+                                 pointBorderColor: '#fff',
+                                 pointHoverBackgroundColor: '#fff',
+                                 pointHoverBorderColor: ctx => data[ctx.dataIndex] > QUESTION_TIME_LIMIT ? exceededBorder : normalBorder,
+
+                            },
+                            {
+                                type: 'line',
+                                label: `${QUESTION_TIME_LIMIT}s Threshold`,
+                                data: Array(quizData.length).fill(QUESTION_TIME_LIMIT),
+                                borderColor: 'rgba(220, 53, 69, 0.8)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Time (seconds)'
+                                }
+                            },
+                            x: {
+                                 title: {
+                                    display: true,
+                                    text: 'Question Number'
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 1) return null;
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed.y !== null) label += context.parsed.y + 's';
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                         interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                    }
+                });
+            } catch (error) {
+                console.error("Chart.js error:", error);
+            }
+        }
+
+        // --- Event Listeners ---
+        startQuizButton.addEventListener('click', startQuiz);
+        prevButton.addEventListener('click', handlePrev);
+        nextButton.addEventListener('click', handleNext);
+        reviewButton.addEventListener('click', toggleReview);
+
+         nameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                startQuizButton.click();
+            }
+        });
+
+        // --- Initial Setup ---
+        showPage('landing-page');
+
+    </script>
+
+</body>
+</html>
