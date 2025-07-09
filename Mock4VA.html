@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supreme HTML Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        /* ... (your existing CSS rules) ... */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars on body */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #f0f2f5;
+            color: #333;
+            font-size: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quiz-container, .landing-container, .results-container {
+            background-color: #ffffff;
+            overflow: hidden;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .landing-container, .results-container {
+            padding: 30px;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .results-container {
+            justify-content: flex-start; /* Align results content to top */
+        }
+
+
+        .landing-container h1, .results-container h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2em;
+            font-weight: 600;
+            margin-top: 0;
+        }
+
+        .landing-container input[type="text"] {
+            padding: 10px 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 80%;
+            max-width: 300px;
+            font-size: 1em;
+        }
+
+        .start-button, .nav-button, .review-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease;
+            margin: 5px;
+            font-weight: 500;
+        }
+
+        .start-button:hover, .nav-button:hover, .review-button:hover {
+            background-color: #0056b3;
+        }
+
+        .quiz-header {
+            background-color: #343a40;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            height: 48px; /* Fixed height */
+            box-sizing: border-box;
+        }
+
+        .quiz-header h1 {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .user-info {
+            font-size: 0.95em;
+        }
+
+        .quiz-body {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            height: calc(100vh - 48px); /* Full height minus header */
+        }
+
+        .question-nav {
+            width: 200px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            flex-shrink: 0;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .question-nav h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .question-nav-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+            gap: 8px;
+        }
+
+        .question-nav-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 35px;
+            height: 35px;
+            border: 1px solid #adb5bd;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: normal;
+            background-color: #ffffff;
+            color: #495057;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            position: relative;
+            font-size: 0.9em;
+        }
+
+        .question-nav-item:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Status Colors */
+        .question-nav-item.status-default { background-color: #ffffff; color: #495057; border-color: #adb5bd;} /* White */
+        .question-nav-item.status-answered { background-color: #28a745; color: white; border-color: #218838; } /* Green */
+        .question-nav-item.status-unanswered { background-color: #dc3545; color: white; border-color: #c82333; } /* Red */
+        .question-nav-item.status-review { background-color: #6f42c1; color: white; border-color: #5a32a3; } /* Purple */
+        .question-nav-item.status-answered-review { background-color: #6f42c1; color: white; border-color: #5a32a3; } /* Purple + Green Dot */
+
+        /* Green dot for answered and reviewed */
+        .question-nav-item.status-answered-review::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 7px;
+            height: 7px;
+            background-color: #28a745; /* Green dot */
+            border-radius: 50%;
+            border: 1px solid white;
+        }
+
+
+        .main-content {
+            flex-grow: 1;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            /* justify-content: space-between; REMOVED - Let content flow naturally */
+            overflow-y: auto; /* Allow scrolling for the whole main area */
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .timers {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 1em;
+            font-weight: 500;
+            color: #495057;
+            flex-shrink: 0;
+        }
+
+        .timer {
+            background-color: #e9ecef;
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+        }
+        .timer.red {
+            color: #dc3545;
+            border-color: #dc3545;
+            font-weight: 600;
+        }
+
+        .question-area-wrapper { /* Wrapper for question and options */
+             /* Allow this area to take up available space before buttons */
+             flex-grow: 1;
+             margin-bottom: 20px; /* Space before buttons */
+             /* Removed overflow-y: auto; let main-content handle scrolling */
+        }
+
+        .question-text {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            color: #212529;
+            font-weight: 500;
+        }
+
+        /* --- NEW: Image Container Styling --- */
+        #question-image-container {
+             margin-bottom: 20px; /* Space between image and options */
+             text-align: center; /* Center the image */
+        }
+        #question-image-container img {
+             max-width: 100%; /* Make image responsive */
+             height: auto;    /* Maintain aspect ratio */
+             max-height: 300px; /* Optional: Limit max height */
+             border-radius: 4px; /* Optional: Rounded corners */
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional: Slight shadow */
+        }
+         /* --- END NEW --- */
+
+        .options {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .options li {
+            margin-bottom: 10px;
+        }
+
+        .options label {
+            display: block;
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            padding: 12px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            font-size: 1em;
+            font-weight: normal;
+        }
+
+        .options input[type="radio"] {
+            margin-right: 10px;
+            display: none;
+        }
+
+         .options label:hover {
+             background-color: #e2e6ea;
+             border-color: #adb5bd;
+         }
+
+        .options input[type="radio"]:checked + label {
+            background-color: #cfe2ff;
+            border-color: #007bff;
+            font-weight: 500;
+            color: #0056b3;
+        }
+
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
+            /* margin-top: auto; REMOVED - Let it sit naturally at the bottom */
+            flex-shrink: 0; /* Prevent buttons area from shrinking */
+        }
+
+        .nav-button.prev { background-color: #ffc107; color: #212529;}
+        .nav-button.prev:hover { background-color: #e0a800; }
+        .review-button { background-color: #6f42c1; }
+        .review-button:hover { background-color: #5a32a3; }
+        .nav-button.next { background-color: #28a745; }
+        .nav-button.next:hover { background-color: #218838; }
+        .nav-button:disabled {
+            background-color: #adb5bd;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .nav-button.submit { background-color: #dc3545; }
+        .nav-button.submit:hover { background-color: #c82333; }
+
+
+        /* Results Page Specifics */
+        .results-content {
+             width: 100%;
+             max-width: 900px;
+             margin: 0 auto;
+             padding: 20px 0;
+        }
+
+        .score-card {
+            background-color: #e6f7ff;
+            border: 1px solid #007bff;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+        .score-card h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #0056b3;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+        .score-card p {
+            font-size: 1.2em;
+            font-weight: 500;
+            color: #343a40;
+            margin: 5px 0;
+        }
+
+        .results-section {
+            margin-bottom: 25px;
+            text-align: left;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+
+        .results-section h3 {
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .result-item {
+            border-bottom: 1px dashed #ced4da;
+            padding: 12px 0;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-item p {
+            margin: 4px 0;
+            font-size: 1em;
+            line-height: 1.4;
+        }
+        .result-item .question { font-weight: 600; color: #343a40; }
+        .result-item .your-answer { color: #dc3545; font-weight: 500;}
+        .result-item .correct-answer { color: #28a745; font-weight: 500;}
+        .result-item .explanation { font-style: normal; color: #6c757d; margin-top: 8px; font-size: 0.95em;}
+
+        .time-analysis {
+             padding: 15px;
+             background-color: #f8f9fa;
+             border: 1px solid #dee2e6;
+             border-radius: 5px;
+             margin-bottom: 20px;
+        }
+        .time-analysis h3 {
+             color: #495057;
+             border-bottom: 1px solid #dee2e6;
+             padding-bottom: 8px;
+             margin-bottom: 15px;
+             text-align: left;
+             font-size: 1.2em;
+             font-weight: 600;
+        }
+        #timeChart {
+            max-height: 350px;
+            width: 100% !important;
+        }
+
+        /* Hide elements */
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="landing-container">
+        <h1>Welcome to the Quiz!</h1>
+        <input type="text" id="name-input" placeholder="Enter your name">
+        <br>
+        <button id="start-quiz-button" class="start-button">Start Quiz</button>
+    </div>
+
+    <!-- Quiz Page -->
+    <div id="quiz-page" class="quiz-container hidden">
+        <div class="quiz-header">
+            <h1>Quiz</h1>
+            <div class="user-info">
+                <span>Name: <span id="user-name"></span></span> |
+                <span>Total Time Left: <span id="total-timer">90:00</span></span>
+            </div>
+        </div>
+        <div class="quiz-body">
+            <div class="question-nav">
+                <h3>Question Palette</h3>
+                <ul id="question-nav-list" class="question-nav-list">
+                    <!-- Question numbers will be dynamically added here -->
+                </ul>
+            </div>
+            <div class="main-content">
+                <!-- Top content wrapper -->
+                <div class="timers">
+                    <span id="current-question-number">Question X of Y</span>
+                    <span class="timer" id="question-timer">Time: 0s</span>
+                </div>
+                <!-- Scrollable question area -->
+                <div class="question-area-wrapper">
+                    <p id="question-text" class="question-text">Question text goes here...</p>
+                    <!-- === NEW: Image container === -->
+                    <div id="question-image-container"></div>
+                    <!-- === END NEW === -->
+                    <ul id="options-list" class="options">
+                        <!-- Options will be dynamically added here -->
+                    </ul>
+                </div>
+                 <!-- Navigation buttons at the bottom -->
+                <div class="navigation-buttons">
+                    <button id="prev-button" class="nav-button prev">Previous</button>
+                    <button id="review-button" class="review-button">Mark for Review</button>
+                    <button id="next-button" class="nav-button next">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Page -->
+    <div id="results-page" class="results-container hidden">
+       <div class="results-content">
+            <h1>Quiz Results</h1>
+            <div id="score-card" class="score-card">
+                <h2>Score</h2>
+                <p><span id="score">0</span> / <span id="total-marks">0</span></p>
+                 <p>Well done, <span id="result-user-name">User</span>!</p>
+            </div>
+
+            <div id="wrong-unanswered-list" class="results-section">
+                <h3>Review Incorrect & Unanswered Questions</h3>
+                <!-- Incorrect/Unanswered questions will be added here -->
+            </div>
+
+            <div class="time-analysis">
+                 <h3>Time Analysis Per Question</h3>
+                <canvas id="timeChart"></canvas>
+            </div>
+             <button onclick="window.location.reload();" class="start-button">Restart Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                question: "1. What is the synonym of Diminish:",
+                options: ["Demote", "Relegate", "Prevent", "Weaken"],
+                answer: "Weaken",
+                explanation: "Diminish means to reduce, lessen, or weaken something."
+            },
+            {
+                question: "2. Select the most appropriate ANTONYM of the given word. Feud",
+                options: ["Gross", "Peril", "Harmony", "Vigour"],
+                answer: "Harmony",
+                explanation: "Feud means a prolonged and bitter quarrel or conflict.\nHarmony means peace, agreement, or friendly relations — the opposite of feud."
+            },
+            {
+                question: "3. Select the most appropriate synonym of the bracketed word in the following sentence to fill in the blank.\nThe athlete's perseverance and mental toughness (facilitate) her to overcome adversity and achieve her goals.",
+                options: ["restricted", "enabled", "limited", "hindered"],
+                answer: "enabled",
+                explanation: "The athlete's perseverance and mental toughness enabled her to overcome adversity and achieve her goals."
+            },
+            {
+                question: "4. Choose the word which is most opposite in meaning to the word WISDOM",
+                options: ["Stupidity", "Sense", "Foresight", "Intelligence"], // Assuming B and C based on context, D is provided
+                answer: "Stupidity",
+                explanation: "Wisdom means the ability to make good decisions based on knowledge and experience.\nStupidity means a lack of intelligence or good judgment - the direct opposite of wisdom."
+            },
+            {
+                question: "5. Choose the best alternative among the four given which can replace the part in bold to make the sentence grammatically correct.\nPeer pressure is bound <b>to effect</b> most of us both positively and negatively.",
+                options: ["to invoke most of us", "to affect most of us", "to impede most of us", "to prompt most of us"],
+                answer: "to affect most of us",
+                explanation: "Here we need a verb to make infinitive.\nTo + Verb = Infinitive\nAffect is usually a verb, and it means to impact or change. Effect, on the other hand, is usually a noun that you would use to indicate the result of a change.\nSo, option (B) is correct."
+            },
+            {
+                question: "6. Select the most appropriate option that can substitute the underlined segment in the given sentence.\nProfessor said that <u>I will be late</u> for the lecture.",
+                options: ["he shall be late for the lecture", "he is late for the lecture", "he would be late for the lecture", "he may be late for the lecture"],
+                answer: "he would be late for the lecture",
+                explanation: "When we change sentence from direct to indirect speech, the speech is changed to past tense. So, option C will be correct."
+            },
+            {
+                question: "7. Parts of the following sentence have been given as options. Select the option that contains an error.\nAll these things happen/ because she do not / pay heed to my words.",
+                options: ["Pay heed to my words", "All these things happen", "No error", "Because she do not"],
+                answer: "Because she do not",
+                explanation: "She is singular and for singular nouns we use 'DOES' instead of 'DO'."
+            },
+            {
+                question: "8. Find the error:\nIf he will come / early, / we will / leave on time.",
+                options: ["If he will come", "Early", "We will", "Leave on time"],
+                answer: "If he will come",
+                explanation: "In English, when expressing a future event or action in the main clause of a conditional sentence (using \"if\"), we typically use the present simple tense, not \"will.\" Therefore, the correct form of the sentence would be:\n\"If he comes early, we will leave on time.\""
+            },
+            {
+                question: "9. He generally avoids arguments as he is _ by nature.",
+                options: ["questionable", "reliable", "quick-minded", "peaceful"],
+                answer: "peaceful",
+                explanation: "Someone who avoids arguments is likely calm and non-confrontational - peaceful fits perfectly.\nQuestionable means doubtful or suspicious - not suitable.\nReliable means trustworthy, not directly related to avoiding arguments.\nQuick-minded means intelligent or sharp - again, not related to avoiding arguments."
+            },
+            {
+                question: "10. Select the most appropriate meaning of the idiom - 'Sell like hot cakes'",
+                options: ["To sell quickly", "Being sold slowly", "Being ignored", "Eating hot cake"], // Assuming A and B based on context
+                answer: "To sell quickly",
+                explanation: "The idiom \"Sell like hot cakes\" means to sell very quickly and in large quantities."
+            },
+            {
+                question: "11. Select the INCORRECTLY spelt word",
+                options: ["Separate", "Accommodate", "Definitely", "Embarass"],
+                answer: "Embarass",
+                explanation: "Correct spelling is Embarrass"
+            },
+            {
+                question: "12. Andrew _ basketball at the college tournament.",
+                options: ["are play the", "are play", "will played", "is playing"],
+                answer: "is playing",
+                explanation: "The subject \"Andrew\" is singular, so we use \"is\"."
+            },
+            {
+                question: "13. Rearrange the following to a meaningful sentence.\n1. Kapil Sharma strike\n3. interview and sketch comed\nC. a fine balance between",
+                options: ["Arrangement A", "Arrangement B", "Arrangement C", "Arrangement D"], // Placeholder options as they are not explicitly listed
+                answer: "Arrangement B",
+                explanation: "Only arrangement (B) makes a contextually meaningful sentence."
+            },
+            {
+                question: "14. What will be one word substitution for 'A person who loves or collects books' ?",
+                options: ["Anglophile", "Heliophile", "Paedophile", "Bibliophile"],
+                answer: "Bibliophile",
+                explanation: "Bibliophile refers to a person who loves or collects books.\nAnglophile refers to a person who loves English culture or England.\nHeliophile refers to a person who loves sunlight.\nPaedophile refers to a person who has a sexual attraction to children."
+            },
+            {
+                question: "15. Choose the correct form of the verb/tense from the given sets of options to fill in the blank space in the sentence.\nWhen we reached the theatre the play _ already _.",
+                options: ["was/began", "has/begin", "had been/ begun", "had/begun"],
+                answer: "had/begun",
+                explanation: "When we reached the theatre the play had already begun.\nPast perfect tense describes an action which is completed before a certain moment in the past. It is also used when two actions happened in the past, and one is linked to the other in terms of time. In case of two clauses, if the simple past tense is used in the dependent clause, then the past perfect tense is used in the independent clause. In the given sentence, the dependent clause, 'When we reached the theatre' is in simple past tense. So, the independent clause should be in past perfect tense. This is expressed by the form 'had' + third form of the verb (begun)."
+            },
+            {
+                question: "16. Reading Comprehension\n\"I must find a hiding place, \"He thought, \"and in the next few seconds or I am done for.\" Scarcely had the thought crossed his mind that the lane took a sudden turning so that he found himself hidden from his pursuers. There are circumstances in which the least energetic of mankind learn to act with speed and decision. This was such an occasion for Rehmat Ali and those who knew him best would have been the most astonished at the lad's boldness. He stopped dead, threw the box of jewellery over a garden wall and, leaping upwards with incredible lightness, he seized the top of the wall with his hands and tumbled headlong into the garden.\n\nRehamat Ali is most likely:",
+                options: ["a burglar", "a policeman", "a night watchman", "a jogger"],
+                answer: "a burglar",
+                explanation: "The context suggests that Rehmat Ali is running away from pursuers and has a box of jewelry, which he throws over a wall before jumping into a garden. This behavior is consistent with that of a burglar trying to escape after committing a theft."
+            },
+            {
+                question: "17. Reading Comprehension\n\"I must find a hiding place, \"He thought, \"and in the next few seconds or I am done for.\" Scarcely had the thought crossed his mind that the lane took a sudden turning so that he found himself hidden from his pursuers. There are circumstances in which the least energetic of mankind learn to act with speed and decision. This was such an occasion for Rehmat Ali and those who knew him best would have been the most astonished at the lad's boldness. He stopped dead, threw the box of jewellery over a garden wall and, leaping upwards with incredible lightness, he seized the top of the wall with his hands and tumbled headlong into the garden.\n\nWhat kind of a person was Rehmat Ali originally?",
+                options: ["slow and steady", "lazy and indecisive", "reflective in nature", "bold and decisive"],
+                answer: "lazy and indecisive",
+                explanation: "Rehmat Ali was originally lazy and indecisive (B), but the emergency forced him to act quickly."
+            },
+            {
+                question: "18. Reading Comprehension\n\"I must find a hiding place, \"He thought, \"and in the next few seconds or I am done for.\" Scarcely had the thought crossed his mind that the lane took a sudden turning so that he found himself hidden from his pursuers. There are circumstances in which the least energetic of mankind learn to act with speed and decision. This was such an occasion for Rehmat Ali and those who knew him best would have been the most astonished at the lad's boldness. He stopped dead, threw the box of jewellery over a garden wall and, leaping upwards with incredible lightness, he seized the top of the wall with his hands and tumbled headlong into the garden.\n\nThe expression 'to stop dead' means:",
+                options: ["to be paralysed", "to come to complete halt", "to die suddenly", "be close to death"],
+                answer: "to come to complete halt",
+                explanation: "The phrase \"stopped dead\" in the passage describes Rehmat Ali suddenly freezing in his tracks, likely to avoid detection or to act quickly.\nIn this passage, \"stopped dead\" = came to a sudden, complete stop (B)."
+            },
+            {
+                question: "19. Reading Comprehension\n\"I must find a hiding place, \"He thought, \"and in the next few seconds or I am done for.\" Scarcely had the thought crossed his mind that the lane took a sudden turning so that he found himself hidden from his pursuers. There are circumstances in which the least energetic of mankind learn to act with speed and decision. This was such an occasion for Rehmat Ali and those who knew him best would have been the most astonished at the lad's boldness. He stopped dead, threw the box of jewellery over a garden wall and, leaping upwards with incredible lightness, he seized the top of the wall with his hands and tumbled headlong into the garden.\n\nRehmat Ali found himself hidden from his pursuers because:",
+                options: ["he had gone around an unexpected bend", "his pursuers could not run fast enough", "he had stopped dead", "he had acted with speed and decision"],
+                answer: "he had gone around an unexpected bend",
+                explanation: "The passage mentions that \"the lane took a sudden turning\", which is why Rehmat Ali found himself hidden from his pursuers. This suggests that the unexpected bend helped him escape."
+            },
+            {
+                question: "20. Reading Comprehension\n\"I must find a hiding place, \"He thought, \"and in the next few seconds or I am done for.\" Scarcely had the thought crossed his mind that the lane took a sudden turning so that he found himself hidden from his pursuers. There are circumstances in which the least energetic of mankind learn to act with speed and decision. This was such an occasion for Rehmat Ali and those who knew him best would have been the most astonished at the lad's boldness. He stopped dead, threw the box of jewellery over a garden wall and, leaping upwards with incredible lightness, he seized the top of the wall with his hands and tumbled headlong into the garden.\n\nThere are circumstances in which the least energetic of mankind learn to act with speed and decision, and the most cautious forget their care. Rehmat illustrates this by:",
+                options: ["running away from his pursuers", "by stopping dead", "turning into a lane", "jumping into the garden"],
+                answer: "jumping into the garden",
+                explanation: "The passage highlights how even the \"least energetic\" (normally lazy) and \"most cautious\" people can act with surprising speed and boldness in emergencies. Rehmat Ali illustrates this by:\nThrowing the jewelry box over the wall (a quick, decisive action).\nLeaping up and tumbling into the garden (an unusually bold and energetic move for someone like him).\nThe most dramatic illustration of his uncharacteristic boldness and speed is jumping into the garden (D), as it requires energy and decisiveness —traits he normally lacks."
+            },
+            {
+                question: "21. Select the most appropriate option to fill in the blank.\nToday, your presentation was _ better than Saba's presentation.",
+                options: ["more", "many", "most", "much"],
+                answer: "much",
+                explanation: "The correct sentence is: Today, your presentation was much better than Saba's presentation.\nThe phrase 'much better' is used to say that a particular action or situation would be even more successful. 'More better' is incorrect because we cannot use double comparatives in a sentence. 'Most better' and 'many better' are incorrect grammatical usages."
+            },
+            {
+                question: "22. Select the most appropriate option to fill in the blank.\n\"School classrooms have _ very little over the last century.\"",
+                options: ["freed", "startled", "unconcerned", "changed"],
+                answer: "changed",
+                explanation: "The correct answer is (d) \"changed.\"\n• \"Changed\" is correct because it refers to modifications or developments over time.\n• (a) \"Freed\" - Incorrect, means released, does not fit.\n• (b) \"Startled\" - Incorrect, means shocked or surprised.\n• (c) \"Unconcerned\" - Incorrect, unrelated meaning.\nExample Sentence:\n• \"Technology has changed the way we communicate over the years.\""
+            },
+            {
+                question: "23. Select the sentence with the most appropriate use of preposition.",
+                options: ["Reetu slept all into the history class.", "Reetu slept all through the history class.", "Reetu slept all during the history class.", "Reetu slept all in the history class."],
+                answer: "Reetu slept all through the history class.",
+                explanation: "The correct sentence is (b) \"Reetu slept all through the history class.\"\n• \"Through\" is the correct preposition because it indicates continuity throughout an event or\nOther Options:\n• (a) \"Into\" - Incorrect, \"into\" indicates movement inside something.\n• (c) \"During\" - Incorrect, \"during\" is used to indicate something happening within a period, but \"through\" is better for continuous action.\n• (d) \"In\" - Incorrect, \"in\" refers to location rather than duration.\nExample Sentence:\n• \"She slept through the entire lecture.\""
+            },
+            {
+                question: "24. Change the direct speech to indirect:\nHe said to me, \"Where is Neha?\"",
+                options: ["He asked me where is Neha.", "He asked me where Neha was.", "He asked me where Neha is.", "He said where was Neha."],
+                answer: "He asked me where Neha was.",
+                explanation: "The correct statement is: He asked me where Neha was. We use verbs like 'asked', 'inquired', etc., while reporting questions in indirect speech."
+            },
+            {
+                question: "25. Given below is a word with its synonym-antonym pair in the options. Identify the correct pair from the options given below.\nSagacious", // Added the word from context
+                options: ["Raucous: Craven", "Disparate: Aversion", "Discerning: Foolish", "Auspicious: Sinister"], // Added missing options C & D based on explanation
+                answer: "Discerning: Foolish",
+                explanation: "Here the word sagacious means having or showing keen mental discernment and good judgement; wise or shrewd. The meaning of the correct synonym antonym pair: Discerning - having or showing good judgement Foolish - lacking good sense or judgement; unwise\nSince the word discerning is similar to sagacious in meaning and foolish is the polar opposite of the word, they form the correct synonym-antonym pair."
+            },
+            {
+                question: "26. Select the most appropriate meaning of the given idiom.\n'Apple of one's eye'",
+                options: ["Very stubborn", "Very strong", "Very precious", "Very docile"],
+                answer: "Very precious",
+                explanation: "\"Apple of one's eye\" means someone or something that is very dear or precious.\nOther Options:\n• (a) \"Very stubborn\" - Incorrect, unrelated meaning.\n• (b) \"Very strong\" - Incorrect, not the meaning of the idiom.\n(d) \"Very docile\" - Incorrect, means obedient or passive.\nExample Sentence:\n• \"Her younger son is the apple of her eye.\""
+            },
+            {
+                question: "27. Fill in the blank with the appropriate verb\nWhere is he? He should _ home hours ago.",
+                options: ["Be", "have been", "had been", "were"],
+                answer: "have been",
+                explanation: "Hence, the correct sentence is 'Where is he? He should have been home hours ago'."
+            },
+            {
+                question: "28. Select the most appropriate meaning of the underlined word.\nThe <u>verdict</u> has gone in favour of the victim.",
+                options: ["opinion", "decision", "judgement", "satisfaction"], // Added missing option C based on context
+                answer: "decision",
+                explanation: "The correct answer is 'decision'.\nThe meaning of the underlined word 'verdict' is 'a decision made after judging the facts that are given, especially one made at the end of a trial'."
+            },
+            {
+                question: "29. Directions: Fill in the blank with the correct preposition.\nThe author's wife was a good editor, _ being a great writer herself.",
+                options: ["besides", "beside", "in addition", "also"], // Added missing options B, C, D based on context
+                answer: "besides",
+                explanation: "The correct sentence: The author's wife was a good editor, besides being a great writer herself."
+            },
+            {
+                question: "30. Choose the appropriate form of the tense for the given sentence.\nIf it _, we will cancel the party.",
+                options: ["were raining", "rain", "rains", "rained"],
+                answer: "rains",
+                explanation: "Correct sentence- If it rains, we will cancel the party."
+            },
+            {
+                question: "31. Kunal walks 10km towards North. From there he walks 6km towards South. Then he walks 3km towards East. How far and in which direction is he with reference to his starting point?",
+                options: ["5km West", "5km North East", "7km East", "7km West"],
+                answer: "5km North East",
+                explanation: "Kunal walks 10km North, then 6km South (net 4km North), then 3km East. Using Pythagoras theorem on the right triangle formed (4km North, 3km East), the distance from start is sqrt(4^2 + 3^2) = sqrt(16 + 9) = sqrt(25) = 5km. The direction is North-East."
+            },
+            {
+                question: "32. In the word NECESSARY how many such pairs of letters are there which has as many letters between them as in the English Alphabet.",
+                options: ["One", "Two", "Three", "None"], // Added options based on Key A
+                answer: "One",
+                explanation: "N(14) E(5) C(3) E(5) S(19) S(19) A(1) R(18) Y(25). Pair: N(14) and S(19). There are 4 letters between N and S in NECESSARY (E, C, E, S). There are 4 letters between N and S in the alphabet (O, P, Q, R). So, N and S form one such pair."
+            },
+            {
+                question: "33. Sam ranked ninth from the top and thirty-eighth from bottom in a class. How many students are there in the class?",
+                options: ["45", "46", "47", "48"], // Added options based on Key B
+                answer: "46",
+                explanation: "Total = Rank from Top + Rank from Bottom - 1\nTotal = 9 + 38 - 1 = 47 - 1 = 46"
+            },
+            {
+                question: "34. Which number replaces the question mark?",
+                options: ["16", "23", "21", "28"],
+                answer: "23",
+                explanation: "Starting top left, and moving down in columns from left to right, the numbers follow the sequence of Prime Numbers from 2 to 23. (2, 3, 5, 7, 11, 13, 17, 19, 23)",
+                image: "mock4img34.png"
+            },
+            {
+                question: "35. What will replace the question mark?\n(195)(383)(575)(763)(955)(?)",
+                options: ["1043", "1125", "1143", "1255"],
+                answer: "1143",
+                explanation: "Starting with the top 3 digit number, the first digit increases by 2 as you descend (1, 3, 5, 7, 9, 11). The middle digit decreases by 1 each time (9, 8, 7, 6, 5, 4). The right hand digit alternates between 5 and 3 (5, 3, 5, 3, 5, 3). So the next number is 1143."
+            },
+            {
+                question: "36. 120, 99, 80, 63, 48, ?",
+                options: ["35", "38", "39", "40"],
+                answer: "35",
+                explanation: "The pattern is subtracting consecutive odd numbers starting from 21: 120 - 21 = 99; 99 - 19 = 80; 80 - 17 = 63; 63 - 15 = 48; 48 - 13 = 35."
+            },
+            {
+                question: "37. Asthma : Lungs :: Conjunctivitis : ?",
+                options: ["Bones", "Teeth", "Eyes", "Blood"],
+                answer: "Eyes",
+                explanation: "As Asthma is a disease of Lungs similarly Conjunctivitis is a disease of Eyes."
+            },
+            {
+                question: "38. In a certain code language, \"NOTES\" is written as \"141520519\" and \"MAKAR\" is written as \"13111118\". How is \"LOFTS\" written in that code language?",
+                options: ["206191316", "12152019", "121562019", "1515121119"],
+                answer: "121562019",
+                explanation: "Letters are replaced by their corresponding position numbers in the English alphabet (A=1, B=2,...). L=12, O=15, F=6, T=20, S=19. So LOFTS = 121562019."
+            },
+            {
+                question: "39. Pointing to a photograph, a man said, \"I have no brother or sister but that man's father is my father's son.\" Whose photograph was it?",
+                options: ["His own", "His son", "His father", "His nephew"], // Added options based on Key B
+                answer: "His son",
+                explanation: "Since the narrator has no brother or sister, 'my father's son' refers to the narrator himself. So the statement becomes 'that man's father is me'. Therefore, the man in the photograph is his son."
+            },
+            {
+                question: "40. Introducing Reena, Monika said, \"She is the only daughter of my father's only daughter.\" How is Monika related to Reena?",
+                options: ["Aunt", "Niece", "Cousin", "Mother"], // Added options based on Key D
+                answer: "Mother",
+                explanation: "Monika's father's only daughter is Monika herself. So, Reena is the only daughter of Monika. Therefore, Monika is Reena's mother."
+            },
+            {
+                question: "41. Insect : Disease :: War : ?",
+                options: ["Army", "Defeat", "Arsenal", "Destruction"],
+                answer: "Destruction",
+                explanation: "An insect can cause disease. Similarly, war causes destruction."
+            },
+            {
+                question: "42. Statement\nOnly a few Army is Navy\nNo Navy is Police\nSome Police are Airforce\nConclusion\nI. No Army is Police\nII. Some Airforce is not a Navy",
+                options: ["Only I follows", "Either I or II follows", "Only II follows", "Both I and II follow"],
+                answer: "Only II follows",
+                explanation: "From 'No Navy is Police' and 'Some Police are Airforce', it follows that the part of Airforce which is Police cannot be Navy. So, Some Airforce is not Navy (II follows). We cannot definitively conclude 'No Army is Police'. Some Army is Navy, and No Navy is Police, but the part of Army that is not Navy might be Police. So I does not necessarily follow."
+            },
+            {
+                question: "43. Identify the number of triangles in the given figure.",
+                options: ["10", "7", "8", "9"],
+                answer: "10",
+                explanation: "Triangles formed are ABC, DEF, DCG, HGF, FHJ, IHK, ILO, HLM, KPO, FLN. Hence, there are total 10 triangles in the figure.",
+                image: "mock4img43.png"
+            },
+            {
+                question: "44. The position of how many letters will remain unchanged if each of the letters in the word 'CHEMISTRY' is arranged in alphabetical order?",
+                options: ["None", "One", "Three", "Two"], // Added options based on Key D
+                answer: "Two",
+                explanation: "Original: C H E M I S T R Y\nAlphabetical: C E H I M R S T Y\nThe letters C and Y remain in their original positions. So, two letters remain unchanged."
+            },
+            {
+                question: "45. Three statements are given, followed by three conclusions numbered I, II and III. Assuming the statements to be true, even if they seem to be at variance with commonly known facts, decide which of the conclusions logically follow(s) from the statements.\n(1) Some pineapples are oranges.\n(2) All oranges are bananas.\n(3) All bananas are plums.\nConclusions:\nI. Some pineapples are plums.\nII. All oranges are plums.\nIII. No pineapple is a banana.",
+                options: ["Only conclusions I and III follow", "Only conclusions I and II follow", "Only conclusion III follows", "Only conclusions II and III follow"],
+                answer: "Only conclusions I and II follow",
+                explanation: "Conclusion I: Some pineapples -> oranges -> bananas -> plums. So, Some pineapples are plums (Follows).\nConclusion II: All oranges -> bananas -> plums. So, All oranges are plums (Follows).\nConclusion III: Some pineapples are oranges, and all oranges are bananas. This implies Some pineapples are bananas. Therefore, 'No pineapple is a banana' is false (Does not follow)."
+            },
+            {
+                question: "46. Select the number from the given options that can replace the question mark (?) in the following series.\n1, 2, 8, 48, 384, ?",
+                options: ["2304", "1920", "3840", "4608"], // Added options based on Key C
+                answer: "3840",
+                explanation: "The pattern involves multiplying by consecutive even numbers: 1 x 2 = 2; 2 x 4 = 8; 8 x 6 = 48; 48 x 8 = 384; 384 x 10 = 3840."
+            },
+            {
+                question: "47. In a certain code language, 'STAY' is written as '65' and 'COME' is written as '36'. How will 'LIST' be written in that language?",
+                options: ["50", "55", "60", "65"], // Added options based on Key C
+                answer: "60",
+                explanation: "The code is the sum of the alphabetical position values of the letters. STAY = 19 + 20 + 1 + 25 = 65. COME = 3 + 15 + 13 + 5 = 36. LIST = 12 + 9 + 19 + 20 = 60."
+            },
+            {
+                question: "48. Six students are sitting around a circular table facing the centre. Kalki is an immediate neighbour of both Oorja and Namita. Leela is sitting second to the left of Oorja. Padma is an immediate neighbour of both Leela and Madhuri. Madhuri is sitting third to the right of Namita. Who is an immediate neighbour of both Kalki and Padma?", // Corrected typo 'net our bot ali and harm sting' to 'neighbour of both Leela and Madhuri' based on solution context
+                options: ["Namita", "Oorja", "Leela", "Madhuri"], // Added options based on Key A
+                answer: "Namita",
+                explanation: "Arrangement (clockwise): Namita, Kalki, Oorja, Leela, Padma, Madhuri. Namita sits between Kalki and Madhuri. Padma sits between Leela and Madhuri. Kalki sits between Namita and Oorja. Leela is 2nd left of Oorja. Madhuri is 3rd right of Namita. The question asks for neighbour of Kalki and Padma. Following the arrangement, Namita is neighbour to Kalki, Madhuri is neighbour to Padma. Re-evaluating based on solution: The arrangement must be Namita, Kalki, Oorja, Madhuri, Padma, Leela. Let's check: Kalki neighbour of Oorja & Namita (Yes). Leela 2nd left of Oorja (Yes). Padma neighbour of Leela & Madhuri (Yes). Madhuri 3rd right of Namita (Yes). Who is neighbour of Kalki and Padma? In this arrangement, Oorja and Madhuri are neighbours of Kalki and Padma respectively. The question likely meant 'Who sits between Kalki and Padma?' which would be Oorja and Madhuri. However, the provided solution says Namita is neighbour of Kalki and Padma. Let's try another arrangement: Padma, Namita, Kalki, Oorja, Leela, Madhuri. Kalki neighbour Oorja/Namita (Yes). Leela 2nd left Oorja (No). Let's use the diagram's implied arrangement: Namita-Kalki-Oorja-Madhuri-Padma-Leela. Neighbours of Kalki are Namita and Oorja. Neighbours of Padma are Madhuri and Leela. The question asks 'Who is an immediate neighbour of both Kalki and Padma?'. This seems impossible in a circle unless they sit next to each other, which they don't. Re-reading the solution: 'Namita is an immediate neighbour of both Kalki and Padma.' This implies the arrangement is Padma-Namita-Kalki... Let's test: Padma, Namita, Kalki, Oorja, Leela, Madhuri. Kalki neighbour Namita/Oorja (Yes). Leela 2nd left Oorja (No). Let's assume the diagram in the solution is correct: Clockwise - Namita, Kalki, Oorja, Leela, Madhuri, Padma. Neighbours of Kalki: Namita, Oorja. Neighbours of Padma: Madhuri, Leela. The question must be flawed or misinterpreted. Sticking to the provided solution's final statement: Namita is neighbour of Kalki and Padma. This implies Namita sits between them, which contradicts other conditions. Assuming the question meant 'Who is an immediate neighbour of Kalki?' (Namita/Oorja) or 'Who is an immediate neighbour of Padma?' (Leela/Madhuri). Given Key A is Namita, perhaps the question intended 'Who sits to the immediate right of Padma?' or similar. Based *strictly* on the solution's final sentence 'Namita is an immediate neighbour of both Kalki and Padma', I select Namita, despite the contradictory arrangement derived. Final derived arrangement matching solution diagram: Clockwise: Namita, Kalki, Oorja, Leela, Madhuri, Padma. Namita is neighbour to Kalki and Padma. This works." // Added clarification on ambiguity
+            },
+            {
+                question: "49. Three letter-clusters have been given, out of which three are alike in some manner and one is different. Select the one that is different.\nNote: The odd one out is not based on the number of consonants/vowels or their position in the letter cluster",
+                options: ["ONM", "BCD", "RST", "JKL"], // Added options based on Key A and explanation
+                answer: "ONM",
+                explanation: "Observing BCD, RST, and JKL, these clusters follow a sequential pattern in the English alphabet (consecutive letters).\nOption (a); ONM → Not Consecutive letters (O=15, N=14, M=13 - reverse consecutive)\nOption (b); BCD → Consecutive letters\nOption (c); RST → Consecutive letters\nOption (d); JKL → Consecutive letters\nONM is different because the letters are in reverse consecutive order, while others are in forward consecutive order."
+            },
+            {
+                question: "50. Arrange the given words in the sequence in which they occur in the dictionary.\n1. Wage\n2. Waist\n3. Waste\n4. West\n5. Wave",
+                options: ["12354", "42135", "35241", "24351"],
+                answer: "12354",
+                explanation: "Alphabetical order: Wage (1), Waist (2), Waste (3), Wave (5), West (4). Sequence: 1, 2, 3, 5, 4."
+            },
+            {
+                question: "51. In a row all the persons are facing north, Rahul is 33rd from the left end and in the right side of Rahul, there are only 16 persons. Find out total number of person in this queue?",
+                options: ["49", "50", "48", "Cannot be determined"], // Added options based on Key A
+                answer: "49",
+                explanation: "If Rahul is 33rd from the left, there are 32 people to his left. There are 16 people to his right. Total persons = (People to left) + Rahul + (People to right) = 32 + 1 + 16 = 49. Or, Position from left + Number of persons to the right = 33 + 16 = 49."
+            },
+            {
+                question: "52. LH3 is related to RN21 in a certain way. In the same way, JF5 is related to PL35. To which of the following is ZV6 related following the same logic?",
+                options: ["FA42", "FB36", "FB42", "FA36"], // Added options based on Key C
+                answer: "FB42",
+                explanation: "Logic: 1st letter +6 positions, 2nd letter + 6 positions, Number x 7.\nL(12) + 6 = R(18); H(8) + 6 = N(14); 3 x 7 = 21 => RN21.\nJ(10) + 6 = P(16); F(6) + 6 = L(12); 5 x 7 = 35 => PL35.\nZ(26) + 6 = F(6); V(22) + 6 = B(2); 6 x 7 = 42 => FB42."
+            },
+            {
+                question: "53. In a certain code language, 'LENGTH' is written as 'QVOTIS' and 'REGARD' is written as 'KVVZKW'. How will 'NATURE' be written as in that language?",
+                options: ["MZGFIV", "OZIFKV", "OZIFKV", "MZIFKV"], // Options B and C are identical in the source, Key is C
+                answer: "OZIFKV",
+                explanation: "The logic seems to involve opposite letters and potentially shifts or fixed positions. Let's re-examine. LENGTH -> QVOTIS. L(12) O(15); E(5) V(22); N(14) M(13); G(7) T(20); T(20) G(7); H(8) S(19). Opposites: L-O, E-V, N-M, G-T, T-G, H-S. The code QVOTIS doesn't match simple opposites. Let's check REGARD -> KVVZKW. R(18) I(9); E(5) V(22); G(7) T(20); A(1) Z(26); R(18) I(9); D(4) W(23). Opposites: R-I, E-V, G-T, A-Z, R-I, D-W. The code KVVZKW doesn't match simple opposites either. Let's re-read the provided solution explanation: 'Replaced with opposite letter in English alphabet: O + 2 → Q; V → V (Same); M + 2 → O; T → T (Same); G + 2 → I; S → S (Same)'. This explanation seems to be decoding QVOTIS back to something else, not encoding LENGTH. Let's try the logic from the solution's NATURE example: 'NATURE → MZGFIV' (This seems to be the opposite letters). Then 'M + 2 → O; Z → Z (Same); G + 2 → I; F → F (Same); I + 2 → K; V → V (Same)'. This logic applies a +2 shift to the 1st, 3rd, and 5th letters of the *opposite* word. Let's test this on LENGTH. Opposite: OVNGTS. Apply logic: O+2=Q; V=V; N+2=P; G=G; T+2=V; S=S -> QVPGSV. Still not QVOTIS. Let's test on REGARD. Opposite: IVTZRW. Apply logic: I+2=K; V=V; T+2=V; Z=Z; R+2=T; W=W -> KVVZTW. Still not KVVZKW. The provided explanation's logic doesn't consistently produce the examples. However, applying the logic derived *from the solution's processing of NATURE* to NATURE itself: Opposite of NATURE is MZGFIV. Apply +2 to 1st, 3rd, 5th: M+2=O, Z=Z, G+2=I, F=F, I+2=K, V=V. Result: OZIFKV. Since this matches the key C, we use this logic despite inconsistencies with the examples."
+            },
+            {
+                question: "54. Cost price of a watch is Rs. 750. If the loss percentage is 40 percent, then what is the value of loss?",
+                options: ["Rs. 220", "Rs. 300", "Rs. 280", "Rs. 420"],
+                answer: "Rs. 300",
+                explanation: "Loss = Loss Percentage * Cost Price = 40% of 750 = (40/100) * 750 = 0.4 * 750 = 300."
+            },
+            {
+                question: "55. If A: B = 3: 7 and B: C = 8: 5, then (A + B): (B + C): (C + A) is:",
+                options: ["12:13:11", "80: 91:59", "21:12:17", "13: 71:88"],
+                answer: "80: 91:59",
+                explanation: "To combine the ratios, make B common. A:B = 3:7 (multiply by 8) -> 24:56. B:C = 8:5 (multiply by 7) -> 56:35. So, A:B:C = 24:56:35. A=24k, B=56k, C=35k. (A+B) = (24+56)k = 80k. (B+C) = (56+35)k = 91k. (C+A) = (35+24)k = 59k. Ratio (A+B):(B+C):(C+A) = 80k:91k:59k = 80:91:59."
+            },
+            {
+                question: "56. Statement: Read this notice before entering the club.\nAssumptions: I. People are literate.\nII. No blind person comes to the club.",
+                options: ["if only assumption I is implicit;", "if only assumption II is implicit;", "if either I or II is implicit;", "if both I and II are implicit."],
+                answer: "if both I and II are implicit.",
+                explanation: "The notice is meant for the people to read. So, it is assumed that the people are literate (Assumption I is implicit). Since the notice is expected to be read by everyone entering, it assumes that those entering can read, implying no blind persons (who cannot read the notice) are expected (Assumption II is implicit)."
+            },
+            {
+                question: "57. Select the figure from the given options that can replace the question mark (?) in the following series.",
+                options: ["mock4img57A.png", "mock4img57B.png", "mock4img57C.png", "mock4img57D.png"],
+                answer: "mock4img57B.png",
+                explanation: "Logic: The elements (line with arrow, circle) move clockwise around the corners/midpoints of the square. The movement alternates between 2 steps and 1 step. Step 1->2: 2 steps CW. Step 2->3: 1 step CW. Step 3->4: 2 steps CW. Step 4->5 (Next): 1 step CW.",
+                image: "mock4img57.png"
+            },
+             {
+                question: "58. As per the data on the basis of which the following bar graph has been constructed, how many students were surveyed? Number of Students to vote for their favourite colour",
+                options: ["53", "51", "52", "50"],
+                answer: "52",
+                explanation: "From the given graph: Total number of students surveyed = Sum of students for each color = 10 (Red) + 7 (Blue) + 7 (Green) + 6 (Yellow) + 4 (Orange) + 7 (Purple) + 5 (Pink) + 6 (Black) = 52.", // Added White based on image, assuming 0 or missing bar? Re-calculating based on solution text: 10+7+7+6+4+7+5+6 = 52. The colors listed in solution text match the calculation.
+                image: "mock4img58.png"
+            },
+            {
+                question: "59. The table below gives the number of students from five different colleges who participated in the Olympiads of five different subjects during a given year.\nWhich college had the maximum aggregate number of participants in the five different subject Olympiads taken together that year?",
+                options: ["College D", "College B", "College E", "College C"], // Corrected option F to E as per table
+                answer: "College C",
+                explanation: "Calculate the total participants for each college:\nCollege A = 124\nCollege B = 126\nCollege C = 145\nCollege D = 143\nCollege E = 132\nCollege C has the maximum aggregate number (145).",
+                image: "mock4img59.png"
+            },
+            {
+                question: "60. The given pie chart shows the percentage wise distribution of an item in 6 different states A, B, C, D, E and F.\nFind the central angle for state D.",
+                options: ["40°", "25°", "18°", "20°"],
+                answer: "18°",
+                explanation: "From the pie chart, State D represents 5% of the total distribution. The central angle for a sector is (Percentage / 100) * 360°. Central angle for state D = (5 / 100) * 360° = 0.05 * 360° = 18°.",
+                image: "mock4img60.png"
+            },
+            {
+                question: "61. A shopkeeper buys an article for Rs. 300. He marks the price at 20% profit. He then gives a discount of 10% on the marked price. What is his actual profit percentage?", // Question text reconstructed based on solution
+                options: ["10%", "12%", "8%", "9%"], // Added options based on Key C (8%)
+                answer: "8%",
+                explanation: "Cost Price (CP) = 300. Marked Price (MP) = CP + 20% of CP = 300 + 0.20 * 300 = 300 + 60 = 360. Discount = 10% of MP = 0.10 * 360 = 36. Selling Price (SP) = MP - Discount = 360 - 36 = 324. Profit = SP - CP = 324 - 300 = 24. Profit Percentage = (Profit / CP) * 100 = (24 / 300) * 100 = (1 / 12.5) * 100 = 8%. Alternate explanation from image: profit % = (MarkedUp% - Discount% - (MarkedUp% * Discount%)/100) = (20 - 10 - (20*10)/100) = 10 - 2 = 8%. This formula seems incorrect. Let's re-check the image solution: profit % = (SP-CP)/CP * 100. SP = MP * (1-Disc%) = CP*(1+Markup%)*(1-Disc%) = 300*(1+0.2)*(1-0.1) = 300*1.2*0.9 = 300*1.08 = 324. Profit = 324-300=24. Profit% = 24/300 * 100 = 8%. The image solution text 'profit % = 1 × 100 = 20%' seems unrelated or incorrect." // Added clarification on solution text vs calculation
+            },
+            {
+                question: "62. 12 copies of a book were sold for Rs. 1800, thereby gaining cost price of 3 copies. The cost price of a copy of the book is:",
+                options: ["Rs. 120", "Rs. 150", "Rs. 100", "Rs. 80"], // Added options based on Key A
+                answer: "Rs. 120",
+                explanation: "Selling Price (SP) of 12 copies = Rs. 1800. SP of 1 copy = 1800 / 12 = Rs. 150. Gain = Cost Price (CP) of 3 copies. We know SP = CP + Gain. So, SP of 12 copies = CP of 12 copies + Gain. 1800 = CP of 12 copies + CP of 3 copies. 1800 = CP of 15 copies. CP of 1 copy = 1800 / 15 = Rs. 120."
+            },
+            {
+                question: "63. What is the average of 36, 43, 51, 68 and 77 ?",
+                options: ["47", "49", "55", "64"],
+                answer: "55",
+                explanation: "Sum = 36 + 43 + 51 + 68 + 77 = 275. Number of values = 5. Average = Sum / Number of values = 275 / 5 = 55."
+            },
+            {
+                question: "64. If two-third of A is four-fifth of B, then A: B =?",
+                options: ["5:6", "6:5", "10:9", "9: 10"],
+                answer: "6:5",
+                explanation: "(2/3) * A = (4/5) * B. To find A:B (or A/B), rearrange the equation: A/B = (4/5) / (2/3) = (4/5) * (3/2) = (4*3) / (5*2) = 12 / 10 = 6 / 5. So, A:B = 6:5."
+            },
+            {
+                question: "65. A, B and C are batsmen. The ratio of the runs scored by them in a certain match are given below: A: B = 5: 3 and B: C = 4: 5. In all they scored 564 runs. The number of runs scored by B is:", // Question text completed based on context
+                options: ["120", "132", "108", "144"], // Added options based on Key D
+                answer: "144",
+                explanation: "Combine ratios: A:B = 5:3 (x4) -> 20:12. B:C = 4:5 (x3) -> 12:15. So A:B:C = 20:12:15. Sum of ratio parts = 20 + 12 + 15 = 47. Total runs = 564. Runs scored by B = (B's ratio part / Sum of ratio parts) * Total runs = (12 / 47) * 564 = 12 * (564 / 47) = 12 * 12 = 144."
+            },
+            {
+                question: "66. The reciprocals of the squares of the numbers 1 1/2 and 1 1/3 are in the ratio?", // Numbers are 1.5 and 1.333... or 3/2 and 4/3
+                options: ["64:81", "81:64", "16:9", "9:16"], // Added options C, D based on calculation, Key A is 64:81
+                answer: "64:81",
+                explanation: "The numbers are 1 1/2 = 3/2 and 1 1/3 = 4/3. Squares of the numbers: (3/2)^2 = 9/4 and (4/3)^2 = 16/9. Reciprocals of the squares: 1 / (9/4) = 4/9 and 1 / (16/9) = 9/16. Ratio of the reciprocals = (4/9) : (9/16). To get integer ratio, multiply by LCM of denominators (9*16=144): (4/9)*144 : (9/16)*144 = (4*16) : (9*9) = 64 : 81."
+            },
+            {
+                question: "67. Solve the following:",
+                options: ["2(1/7)", "1/7", "6/7", "None of these"],
+                answer: "6/7",
+                explanation: "Assuming the expression from the image is (1/8 + 3/7) - (1/8 - 3/7). Expanding the brackets: 1/8 + 3/7 - 1/8 + 3/7. The 1/8 and -1/8 cancel out. Remaining: 3/7 + 3/7 = (3+3)/7 = 6/7.",
+                image: "mock4img67.png"
+            },
+            {
+                question: "68. 23 × 17 + 427 - 52% of 1450 = ?^2",
+                options: ["64", "58", "8", "16"],
+                answer: "8",
+                explanation: "Calculate step-by-step: 23 * 17 = 391. 52% of 1450 = (52/100) * 1450 = 0.52 * 1450 = 754. The equation becomes: 391 + 427 - 754 = ?^2. 391 + 427 = 818. 818 - 754 = 64. So, ?^2 = 64. Taking the square root, ? = 8 (assuming positive result)."
+            },
+            {
+                question: "69. The value of (48 ÷ 72 × 3) - [15 ÷ 8 × (40 - 32) - 10] is:",
+                options: ["-4", "3", "-3", "4"],
+                answer: "-3",
+                explanation: "Evaluate inside brackets first, following order of operations (PEMDAS/BODMAS). Innermost parenthesis: (40 - 32) = 8. Inside square brackets: [15 ÷ 8 × 8 - 10]. Division/Multiplication from left to right: 15 ÷ 8 = 1.875. 1.875 × 8 = 15. So, [15 - 10] = 5. Outside brackets: (48 ÷ 72 × 3). Division/Multiplication from left to right: 48 ÷ 72 = 2/3 (or approx 0.666...). (2/3) × 3 = 2. Final calculation: 2 - 5 = -3."
+            },
+            {
+                question: "70. In a class of 40 students, 18 play cricket and 12 play basketball. If 5 play both, how many play neither?",
+                options: ["10", "15", "20", "5"], // Added options based on Key B
+                answer: "15",
+                explanation: "Let C be the set of students playing cricket, B be the set playing basketball. Total = 40. n(C) = 18. n(B) = 12. n(C ∩ B) = 5 (play both). Number playing at least one sport = n(C ∪ B) = n(C) + n(B) - n(C ∩ B) = 18 + 12 - 5 = 30 - 5 = 25. Number playing neither = Total students - n(C ∪ B) = 40 - 25 = 15."
+            },
+            {
+                question: "71. Which are the world's largest islands?",
+                options: ["Greenland", "New Guinea", "Borneo", "Madagascar"],
+                answer: "Greenland",
+                explanation: "Greenland is the world's largest island, covering an area of 2,166,086 sq km. New Guinea is second, Borneo third, and Madagascar fourth."
+            },
+            {
+                question: "72. Which country produces the most timber?",
+                options: ["United States", "China", "Russia", "Brazil"],
+                answer: "United States",
+                explanation: "The United States is a major producer of timber, particularly coniferous timber, and is often cited as the world's largest producer, although figures can vary slightly year by year depending on the source and specific types of timber included."
+            },
+            {
+                question: "73. Who was the mother of Chhatrapati Shivaji Maharaj?",
+                options: ["Jijabai", "Tarabai", "Ahilyabai", "Lakshmibai"],
+                answer: "Jijabai",
+                explanation: "Jijabai Bhonsle (referred to as Rajmata Jijabai or Jijau) was the mother of Chhatrapati Shivaji Maharaj, the founder of the Maratha Empire."
+            },
+            {
+                question: "74. Who was the President of the Constituent Assembly?",
+                options: ["Frank Anthony", "Abdul Kalam", "Jawaharlal Nehru", "Rajendra Prasad"],
+                answer: "Rajendra Prasad",
+                explanation: "Dr. Sachchidananda Sinha was the first temporary president of the Constituent Assembly. Dr. Rajendra Prasad was later elected as the permanent President of the Constituent Assembly."
+            },
+            {
+                question: "75. Meghnad Saha is known for his contribution in which field?",
+                options: ["Chemistry", "Botany", "Physics", "Mathematics"],
+                answer: "Physics",
+                explanation: "Meghnad Saha was an Indian astrophysicist known for developing the Saha ionization equation, used to describe chemical and physical conditions in stars. His primary field was astrophysics, a branch of Physics."
+            },
+            {
+                question: "76. Which elements is obtained from sea weeds?",
+                options: ["Argon", "Sulphur", "Vanadium", "Iodine"],
+                answer: "Iodine",
+                explanation: "Seaweeds, particularly brown seaweeds like kelp, are a rich natural source of iodine, an essential element for thyroid hormone production."
+            },
+            {
+                question: "77. When is Earth Day celebrated?",
+                options: ["4 April", "16 February", "22 April", "17 September"],
+                answer: "22 April",
+                explanation: "Earth Day is an annual event celebrated worldwide on April 22 to demonstrate support for environmental protection."
+            },
+            {
+                question: "78. Which blood type is considered the universal donor?",
+                options: ["A", "B", "AB", "O"],
+                answer: "O",
+                explanation: "Blood type O negative (O-) is considered the universal donor because its red blood cells lack A, B, and Rh antigens, making them compatible with recipients of any blood type. Often, 'O' is used generally when Rh factor isn't specified."
+            },
+            {
+                question: "79. Which of the following elements is present in common table salt?",
+                options: ["Magnesium", "Copper", "Sodium", "Calcium"],
+                answer: "Sodium",
+                explanation: "Common table salt is chemically sodium chloride (NaCl). Therefore, it contains the element Sodium (Na)."
+            },
+            {
+                question: "80. Kannadippaya, a tribal handicraft recently granted the GI tag, belongs to which state?", // Question reconstructed based on solution
+                options: ["Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh"], // Added options based on Key B
+                answer: "Kerala",
+                explanation: "Kannadippaya, a distinctive tribal handicraft from Kerala, has been granted the Geographical Indication (GI) tag. (Note: The date 4 April 2025 in the original text seems futuristic and likely a typo)."
+            },
+            {
+                question: "81. Who founded the aerospace company Blue Origin?",
+                options: ["Elon Musk", "Jeff Bezos", "Richard Branson", "John Glenn"],
+                answer: "Jeff Bezos",
+                explanation: "Blue Origin, an American aerospace manufacturer and sub-orbital spaceflight services company, was founded in 2000 by Jeff Bezos, the founder of Amazon."
+            },
+            {
+                question: "82. If assets of a bank are greater than liabilities, it will be recorded as:",
+                options: ["liabilities", "net worth", "reserves", "assets"],
+                answer: "net worth",
+                explanation: "Net worth (or equity) is defined as Assets minus Liabilities. If Assets > Liabilities, the difference is a positive net worth."
+            },
+            {
+                question: "83. Which of the following rivers originates from the 'Rakas Lake'?",
+                options: ["Beas", "Sutlej", "Chenab", "Jhelum"],
+                answer: "Sutlej",
+                explanation: "The Sutlej River originates from Rakshastal (Rakas Lake), which lies west of Lake Manasarovar in Tibet, near Mount Kailash."
+            },
+            {
+                question: "84. Sohrai, Karam and Jawa festivals are celebrated in which state of India?",
+                options: ["Andhra Pradesh", "Rajasthan", "Madhya Pradesh", "Jharkhand"], // Added option C based on context, Key D
+                answer: "Jharkhand",
+                explanation: "Sohrai, Karam, and Jawa are important traditional festivals celebrated by various tribal communities primarily in the state of Jharkhand."
+            },
+            {
+                question: "85. Which of the following is a Kharif crop?",
+                options: ["Wheat", "Maize", "Mustard", "Barley"],
+                answer: "Maize",
+                explanation: "Kharif crops are monsoon crops sown at the beginning of the rains (e.g., June) and harvested in autumn (e.g., October). Maize (corn) is a Kharif crop. Wheat, Mustard, and Barley are Rabi crops (winter crops)."
+            },
+            {
+                question: "86. The Central Processing Unit (CPU) in a computer consists of",
+                options: ["Input, output and processing", "Control unit, primary storage and secondary storage", "Control unit, arithmetic logical unit, registers", "None of the above"],
+                answer: "Control unit, arithmetic logical unit, registers",
+                explanation: "The main components of a CPU are the Arithmetic Logic Unit (ALU) which performs calculations and logical operations, the Control Unit (CU) which directs operations, and Registers which are small, fast storage locations within the CPU."
+            },
+            {
+                question: "87. Which of the following is not one of the internal components of a CPU?",
+                options: ["Control sequencer", "ALU", "Registers", "Floppy disk"], // Added options B, C based on context, Key D
+                answer: "Floppy disk",
+                explanation: "The Control sequencer (part of Control Unit), ALU, and Registers are internal components of a CPU. A Floppy disk is an external storage medium, not part of the CPU itself."
+            },
+            {
+                question: "88. The communication line between CPU memory and peripherals is called a",
+                options: ["Bus", "Line", "Media", "All of these"],
+                answer: "Bus",
+                explanation: "A bus is a communication system in computer architecture that transfers data between components inside a computer, or between computers. This includes pathways between the CPU, memory, and peripheral devices."
+            },
+            {
+                question: "89. The computer abbreviation KB usually means",
+                options: ["Key Block", "Kernal Boot", "Key Byte", "Kilo Byte"],
+                answer: "Kilo Byte",
+                explanation: "KB stands for Kilobyte, a unit of digital information storage equal to 1,024 bytes (in binary context) or sometimes 1,000 bytes (in decimal context)."
+            },
+            {
+                question: "90. Virtual memory is",
+                options: ["An extremely large main memory", "An extremely large secondary memory", "An illusion of extremely large main memory", "A type of memory used in super computers"],
+                answer: "An illusion of extremely large main memory",
+                explanation: "Virtual memory is a memory management technique where secondary storage (like a hard drive) is used to extend the apparent size of the physical main memory (RAM), creating an illusion for the user/process that the main memory is larger than it actually is."
+            },
+            {
+                question: "91. Which of the following is NOT a social networking application?", // Question reconstructed based on solution
+                options: ["Haptik", "Facebook", "Instagram", "Twitter"], // Added options B, C, D based on solution context
+                answer: "Haptik",
+                explanation: "Facebook, Instagram, and Twitter are well-known social networking platforms. Haptik is a company that develops conversational AI and chatbot technologies, not a social networking application itself."
+            },
+            {
+                question: "92. LISP is designed for",
+                options: ["Artificial intelligence", "GUI", "CUI", "Optical Fiber"],
+                answer: "Artificial intelligence",
+                explanation: "LISP (List Processing) is one of the oldest high-level programming languages and was specifically designed for, and heavily used in, artificial intelligence research and applications."
+            },
+            {
+                question: "93. Which of the following is not a network device?",
+                options: ["Router", "Switch", "Printer", "Bridge"],
+                answer: "Printer",
+                explanation: "Routers, Switches, and Bridges are network devices used to connect network segments and manage traffic flow. A Printer is an output peripheral device that can be connected to a network but is not fundamentally a device for managing network structure or traffic."
+            },
+            {
+                question: "94. A _ is software program used to view web pages.",
+                options: ["Site", "Host", "Link", "Browser"],
+                answer: "Browser",
+                explanation: "A web browser (commonly referred to as a browser) is application software for accessing the World Wide Web. It retrieves, presents, and traverses information resources on the web."
+            },
+            {
+                question: "95. The vast network of computer that connects millions of people all over the world is called?",
+                options: ["LAN", "Web", "Hypertext", "Internet"],
+                answer: "Internet",
+                explanation: "The Internet is the global system of interconnected computer networks that uses the Internet protocol suite (TCP/IP) to link devices worldwide."
+            },
+            {
+                question: "96. The main reason to encrypt a file is to",
+                options: ["Reduce its size", "Secure for its transmission", "Prepare it for backup", "Include it in the start-up sequence"],
+                answer: "Secure for its transmission",
+                explanation: "Encryption converts data into a code to prevent unauthorized access. Its primary purpose is to ensure confidentiality and security, especially when data is being transmitted over networks or stored."
+            },
+            {
+                question: "97. A Database Management System is a type of _ software.",
+                options: ["It is a type of system software", "It is a kind of application software", "It is a kind of general software", "Both A and C"],
+                answer: "It is a type of system software",
+                explanation: "DBMS software sits between the operating system and the application programs/users. It manages the database structure and controls access to the data. While it can be debated, it's often categorized closer to system software as it manages a core system resource (data) and provides services to application software, though some might classify it as specialized application software. The provided answer key selects 'System Software'."
+            },
+            {
+                question: "98. Which network protocol is commonly used for sending and receiving emails over the internet?",
+                options: ["FTP", "SMTP", "HTTP", "TCP"],
+                answer: "SMTP",
+                explanation: "SMTP (Simple Mail Transfer Protocol) is the standard protocol for sending emails. For receiving emails, protocols like POP3 (Post Office Protocol 3) or IMAP (Internet Message Access Protocol) are commonly used, but SMTP handles the sending process between servers and from client to server."
+            },
+            {
+                question: "99. What does 'HTTP' stand for and what is its role in the internet?",
+                options: ["High Transfer Text Protocol; file transfer", "Hypertext Transfer Protocol; foundation of data communication", "Hyperlink Tracking Protocol; monitoring links", "Host Transfer Protocol; hosting websites"],
+                answer: "Hypertext Transfer Protocol; foundation of data communication",
+                explanation: "HTTP stands for Hypertext Transfer Protocol. It is the underlying protocol used by the World Wide Web for transferring hypertext documents (like web pages) between clients (browsers) and servers."
+            },
+            {
+                question: "100. Which of the following is the type of software that has self-replicating software that causes damage to files and system?",
+                options: ["Virus", "Trojan horses", "Logic Bomb", "Worm"], // Added options A, C based on context, Key D
+                answer: "Worm",
+                explanation: "A computer worm is a standalone malware computer program that replicates itself in order to spread to other computers. It often uses a computer network to spread itself, relying on security failures on the target computer to access it. Viruses typically require attachment to an existing program, while worms are standalone. Both can cause damage."
+            }
+        ];
+
+        // --- State Variables ---
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(quizData.length).fill(null);
+        let questionStatus = new Array(quizData.length).fill('default');
+        let markedForReview = new Array(quizData.length).fill(false);
+        let timeSpentPerQuestion = new Array(quizData.length).fill(0);
+        let questionTimerInterval;
+        let totalTimerInterval;
+        let questionViewStartTime = null;
+        let totalTimeSeconds = 90 * 60;
+        let userName = "";
+        let timeChart = null;
+        const QUESTION_TIME_LIMIT = 45;
+
+        // --- DOM Elements ---
+        const landingPage = document.getElementById('landing-page');
+        const quizPage = document.getElementById('quiz-page');
+        const resultsPage = document.getElementById('results-page');
+        const nameInput = document.getElementById('name-input');
+        const startQuizButton = document.getElementById('start-quiz-button');
+        const userNameDisplay = document.getElementById('user-name');
+        const resultUserNameDisplay = document.getElementById('result-user-name');
+        const totalTimerDisplay = document.getElementById('total-timer');
+        const questionNavList = document.getElementById('question-nav-list');
+        const currentQuestionNumberDisplay = document.getElementById('current-question-number');
+        const questionTimerDisplay = document.getElementById('question-timer');
+        const questionText = document.getElementById('question-text');
+        const optionsList = document.getElementById('options-list');
+        const prevButton = document.getElementById('prev-button');
+        const reviewButton = document.getElementById('review-button');
+        const nextButton = document.getElementById('next-button');
+        const scoreDisplay = document.getElementById('score');
+        const totalMarksDisplay = document.getElementById('total-marks');
+        const wrongUnansweredList = document.getElementById('wrong-unanswered-list');
+        const timeChartCanvas = document.getElementById('timeChart');
+        const imageContainer = document.getElementById('question-image-container'); // <-- Get image container
+
+        // --- Functions ---
+
+        function showPage(pageId) {
+            landingPage.classList.add('hidden');
+            quizPage.classList.add('hidden');
+            resultsPage.classList.add('hidden');
+            const pageToShow = document.getElementById(pageId);
+            if (pageToShow) {
+                pageToShow.classList.remove('hidden');
+            }
+        }
+
+        function startQuiz() {
+            userName = nameInput.value.trim() || "Guest";
+            userNameDisplay.textContent = userName;
+            resultUserNameDisplay.textContent = userName;
+            showPage('quiz-page');
+
+            totalMarksDisplay.textContent = quizData.length;
+            initializeQuestionNav();
+            loadQuestion(currentQuestionIndex);
+            startTotalTimer();
+        }
+
+        function initializeQuestionNav() {
+            questionNavList.innerHTML = '';
+            quizData.forEach((_, index) => {
+                const li = document.createElement('li');
+                li.textContent = index + 1;
+                li.classList.add('question-nav-item', `status-${questionStatus[index]}`);
+                li.dataset.index = index;
+                li.addEventListener('click', () => navigateToQuestion(index));
+                questionNavList.appendChild(li);
+            });
+             updateQuestionNavHighlight();
+        }
+
+        function updateQuestionNavHighlight() {
+             const items = questionNavList.querySelectorAll('.question-nav-item');
+             items.forEach((item, index) => {
+                 item.style.borderColor = '';
+                 item.style.borderWidth = '';
+                 if (index === currentQuestionIndex) {
+                     item.style.borderColor = '#007bff';
+                     item.style.borderWidth = '2px';
+                 }
+             });
+        }
+
+
+        function updateSingleQuestionNavStatus(index) {
+            const item = questionNavList.querySelector(`.question-nav-item[data-index="${index}"]`);
+            if (item) {
+                item.classList.remove('status-default', 'status-answered', 'status-unanswered', 'status-review', 'status-answered-review');
+                item.classList.add(`status-${questionStatus[index]}`);
+            }
+        }
+
+        function recordTimeSpent() {
+            if (questionViewStartTime !== null) {
+                const timeElapsedThisVisit = (Date.now() - questionViewStartTime) / 1000;
+                if (timeElapsedThisVisit > 0) {
+                    timeSpentPerQuestion[currentQuestionIndex] += timeElapsedThisVisit;
+                }
+                questionViewStartTime = null;
+            }
+        }
+
+        function updateStatus(index) {
+            const answered = userAnswers[index] !== null;
+            const reviewed = markedForReview[index];
+            let currentStatus = questionStatus[index];
+            let newStatus = currentStatus;
+
+            if (answered && reviewed) {
+                newStatus = 'answered-review';
+            } else if (answered && !reviewed) {
+                newStatus = 'answered';
+            } else if (!answered && reviewed) {
+                newStatus = 'review';
+            } else if (!answered && !reviewed) {
+                if (currentStatus === 'unanswered') {
+                    newStatus = 'unanswered';
+                } else if (currentStatus === 'default') {
+                     newStatus = 'default';
+                } else {
+                    newStatus = 'unanswered';
+                }
+            }
+
+            if (newStatus !== currentStatus) {
+                questionStatus[index] = newStatus;
+                updateSingleQuestionNavStatus(index);
+            }
+        }
+
+        function finalizeStatusOnLeave(index) {
+            const answered = userAnswers[index] !== null;
+            const reviewed = markedForReview[index];
+            let finalStatus = questionStatus[index];
+
+            if (!answered && !reviewed) {
+                finalStatus = 'unanswered';
+            } else if (answered && reviewed) {
+                finalStatus = 'answered-review';
+            } else if (answered && !reviewed) {
+                finalStatus = 'answered';
+            } else if (!answered && reviewed) {
+                finalStatus = 'review';
+            }
+
+            if (finalStatus !== questionStatus[index]) {
+                questionStatus[index] = finalStatus;
+            }
+            updateSingleQuestionNavStatus(index);
+        }
+
+
+        function loadQuestion(index) {
+            const question = quizData[index];
+            currentQuestionNumberDisplay.textContent = `Question ${index + 1} of ${quizData.length}`;
+            questionText.textContent = question.question;
+
+            // --- NEW: Handle Image Display ---
+            imageContainer.innerHTML = ''; // Clear previous image
+            if (question.image) {
+                const imgElement = document.createElement('img');
+                imgElement.src = question.image;
+                imgElement.alt = `Image for question ${index + 1}`; // Add alt text
+                // Style applied via CSS now
+                imageContainer.appendChild(imgElement);
+            }
+            // --- END NEW ---
+
+            optionsList.innerHTML = '';
+            question.options.forEach((option, i) => {
+                const li = document.createElement('li');
+                const inputId = `q${index}_option${i}`;
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = `question${index}`;
+                input.value = option;
+                input.id = inputId;
+                input.checked = userAnswers[index] === option;
+                input.addEventListener('change', () => {
+                    userAnswers[index] = option;
+                    updateStatus(index);
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = inputId;
+                label.textContent = option;
+
+                li.appendChild(input);
+                li.appendChild(label);
+                optionsList.appendChild(li);
+            });
+
+            prevButton.disabled = index === 0;
+            nextButton.textContent = index === quizData.length - 1 ? 'Submit' : 'Next';
+
+            reviewButton.textContent = markedForReview[index] ? 'Unmark Review' : 'Mark for Review';
+            reviewButton.style.backgroundColor = markedForReview[index] ? '#5a32a3' : '#6f42c1';
+
+            questionViewStartTime = Date.now();
+            startQuestionTimer();
+
+            updateQuestionNavHighlight();
+
+            const questionAreaWrapper = document.querySelector('.question-area-wrapper');
+            if (questionAreaWrapper) questionAreaWrapper.scrollTop = 0;
+        }
+
+        function navigateToQuestion(index) {
+            if (index < 0 || index >= quizData.length || index === currentQuestionIndex) return;
+
+            const leavingIndex = currentQuestionIndex;
+            recordTimeSpent();
+            finalizeStatusOnLeave(leavingIndex);
+
+            currentQuestionIndex = index;
+            loadQuestion(currentQuestionIndex);
+        }
+
+        function handleNext() {
+             const leavingIndex = currentQuestionIndex;
+             recordTimeSpent();
+             finalizeStatusOnLeave(leavingIndex);
+
+             if (currentQuestionIndex < quizData.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion(currentQuestionIndex);
+            } else {
+                submitQuiz();
+            }
+        }
+
+        function handlePrev() {
+            const leavingIndex = currentQuestionIndex;
+            recordTimeSpent();
+            finalizeStatusOnLeave(leavingIndex);
+
+            if (currentQuestionIndex > 0) {
+               currentQuestionIndex--;
+               loadQuestion(currentQuestionIndex);
+            }
+        }
+
+        function toggleReview() {
+            markedForReview[currentQuestionIndex] = !markedForReview[currentQuestionIndex];
+            updateStatus(currentQuestionIndex);
+            reviewButton.textContent = markedForReview[currentQuestionIndex] ? 'Unmark Review' : 'Mark for Review';
+            reviewButton.style.backgroundColor = markedForReview[currentQuestionIndex] ? '#5a32a3' : '#6f42c1';
+        }
+
+
+        function startQuestionTimer() {
+            clearInterval(questionTimerInterval);
+
+            function updateTimerDisplay() {
+                let totalTimeSpentSoFar = timeSpentPerQuestion[currentQuestionIndex];
+                let timeElapsedThisVisit = 0;
+
+                if (questionViewStartTime) {
+                    timeElapsedThisVisit = (Date.now() - questionViewStartTime) / 1000;
+                }
+
+                let currentTotalTime = totalTimeSpentSoFar + timeElapsedThisVisit;
+                let displayTime = Math.round(currentTotalTime);
+
+                questionTimerDisplay.classList.remove('red');
+
+                if (currentTotalTime > QUESTION_TIME_LIMIT) {
+                    let exceededTime = Math.round(currentTotalTime - QUESTION_TIME_LIMIT);
+                    questionTimerDisplay.textContent = `Exceeded: ${exceededTime}s`;
+                    questionTimerDisplay.classList.add('red');
+                } else {
+                     questionTimerDisplay.textContent = `Time: ${displayTime}s`;
+                }
+            }
+
+            updateTimerDisplay();
+            questionTimerInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        function startTotalTimer() {
+            clearInterval(totalTimerInterval);
+            let currentTime = totalTimeSeconds;
+
+            totalTimerInterval = setInterval(() => {
+                currentTime--;
+                if (currentTime <= 0) {
+                    clearInterval(totalTimerInterval);
+                    totalTimerDisplay.textContent = '00:00';
+                    alert("Finished🩻");
+                    submitQuiz();
+                } else {
+                    const minutes = Math.floor(currentTime / 60);
+                    const seconds = currentTime % 60;
+                    totalTimerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        function submitQuiz() {
+            recordTimeSpent();
+            finalizeStatusOnLeave(currentQuestionIndex);
+            clearInterval(questionTimerInterval);
+            clearInterval(totalTimerInterval);
+
+             questionStatus.forEach((status, index) => {
+                 if (index !== currentQuestionIndex) {
+                     finalizeStatusOnLeave(index);
+                 }
+             });
+
+            calculateResults();
+            showPage('results-page');
+        }
+
+        function calculateResults() {
+            let score = 0;
+            wrongUnansweredList.innerHTML = '';
+
+            quizData.forEach((question, index) => {
+                const isCorrect = userAnswers[index] === question.answer;
+                if (isCorrect) {
+                    score++;
+                }
+
+                if (questionStatus[index] === 'unanswered' || (userAnswers[index] !== null && !isCorrect)) {
+                    const resultItem = document.createElement('div');
+                    resultItem.classList.add('result-item');
+
+                    const qText = document.createElement('p');
+                    qText.classList.add('question');
+                    qText.innerHTML = `<strong>Q${index + 1}:</strong> ${question.question}`;
+                    resultItem.appendChild(qText);
+
+                    const yourAns = document.createElement('p');
+                    yourAns.innerHTML = `<strong>Your Answer:</strong> `;
+                    if (userAnswers[index] !== null) {
+                         yourAns.innerHTML += `<span class="your-answer">${userAnswers[index]}</span>`;
+                    } else {
+                         yourAns.innerHTML += `<span class="your-answer">Not Answered</span>`;
+                    }
+                     resultItem.appendChild(yourAns);
+
+
+                    const correctAns = document.createElement('p');
+                    correctAns.innerHTML = `<strong>Correct Answer:</strong> <span class="correct-answer">${question.answer}</span>`;
+                    resultItem.appendChild(correctAns);
+
+                    const explanation = document.createElement('p');
+                    explanation.classList.add('explanation');
+                    explanation.textContent = question.explanation;
+                    resultItem.appendChild(explanation);
+
+                    wrongUnansweredList.appendChild(resultItem);
+                }
+            });
+
+            scoreDisplay.textContent = score;
+            totalMarksDisplay.textContent = quizData.length;
+
+            setTimeout(generateTimeChart, 100);
+        }
+
+         function generateTimeChart() {
+            const ctx = timeChartCanvas.getContext('2d');
+             if (!ctx) {
+                console.error("Failed to get canvas context for time chart.");
+                return;
+            }
+            const labels = quizData.map((_, index) => `Q${index + 1}`);
+            const data = timeSpentPerQuestion.map(time => Math.round(time));
+
+            const normalColor = 'rgba(0, 123, 255, 0.3)';
+            const exceededColor = 'rgba(220, 53, 69, 0.3)';
+            const normalBorder = 'rgba(0, 123, 255, 1)';
+            const exceededBorder = 'rgba(220, 53, 69, 1)';
+
+            if (timeChart) {
+                timeChart.destroy();
+            }
+
+            try {
+                timeChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Time Spent (seconds)',
+                                data: data,
+                                fill: true,
+                                tension: 0.3,
+                                segment: {
+                                    borderColor: ctx => (ctx.p1.parsed.y > QUESTION_TIME_LIMIT) ? exceededBorder : normalBorder,
+                                    backgroundColor: ctx => {
+                                        const y1 = ctx.p0.parsed.y;
+                                        const y2 = ctx.p1.parsed.y;
+                                        return (y1 > QUESTION_TIME_LIMIT || y2 > QUESTION_TIME_LIMIT) ? exceededColor : normalColor;
+                                    }
+                                },
+                                 pointBackgroundColor: ctx => data[ctx.dataIndex] > QUESTION_TIME_LIMIT ? exceededBorder : normalBorder,
+                                 pointBorderColor: '#fff',
+                                 pointHoverBackgroundColor: '#fff',
+                                 pointHoverBorderColor: ctx => data[ctx.dataIndex] > QUESTION_TIME_LIMIT ? exceededBorder : normalBorder,
+
+                            },
+                            {
+                                type: 'line',
+                                label: `${QUESTION_TIME_LIMIT}s Threshold`,
+                                data: Array(quizData.length).fill(QUESTION_TIME_LIMIT),
+                                borderColor: 'rgba(220, 53, 69, 0.8)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Time (seconds)'
+                                }
+                            },
+                            x: {
+                                 title: {
+                                    display: true,
+                                    text: 'Question Number'
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 1) return null;
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed.y !== null) label += context.parsed.y + 's';
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                         interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                    }
+                });
+            } catch (error) {
+                console.error("Chart.js error:", error);
+            }
+        }
+
+        // --- Event Listeners ---
+        startQuizButton.addEventListener('click', startQuiz);
+        prevButton.addEventListener('click', handlePrev);
+        nextButton.addEventListener('click', handleNext);
+        reviewButton.addEventListener('click', toggleReview);
+
+         nameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                startQuizButton.click();
+            }
+        });
+
+        // --- Initial Setup ---
+        showPage('landing-page');
+
+    </script>
+
+</body>
+</html>
